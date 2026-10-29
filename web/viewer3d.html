@@ -1699,8 +1699,38 @@
           style: style,
           caseId: caseId
         });
+      } else if (data.type === 'DIRECT_DOWNLOAD_IMAGE') {
+        const style = data.style || 'photo';
+        const filename = data.filename || 'Forensic_Composite.png';
+        const caseId = data.caseId || 'CASE-2026-X891';
+        const imgUrl = generateForensic2DSketch(style, caseId);
+        downloadBlobUrl(imgUrl, filename);
       }
     });
+
+    function downloadBlobUrl(dataUrl, filename) {
+      try {
+        const parts = dataUrl.split(',');
+        const mime = (parts[0].match(/:(.*?);/) || [])[1] || 'image/png';
+        const binStr = atob(parts[1]);
+        const len = binStr.length;
+        const u8arr = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          u8arr[i] = binStr.charCodeAt(i);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+      } catch (err) {
+        console.error('Download error:', err);
+      }
+    }
 
     window.onload = init;
   </script>

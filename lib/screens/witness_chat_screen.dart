@@ -33,7 +33,7 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
   final ValueNotifier<String?> _coloredDataUrlNotifier = ValueNotifier<String?>(null);
   StreamSubscription? _sketchMsgSubscription;
 
-  // Active 3D composite parameters
+
   CompositeParams _currentParams = CompositeParams(
     model: 'male.glb',
     scaleX: 1.0,
@@ -366,31 +366,41 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
       'style': style,
       'caseId': widget.caseId,
     });
+    PlatformBridge.postToIframe({
+      'type': 'GENERATE_FORENSIC_SKETCH',
+      'style': style,
+      'caseId': widget.caseId,
+    });
   }
 
   void _downloadActiveImage(String activeFormat) {
-    if (activeFormat == 'colored') {
-      final url = _coloredDataUrlNotifier.value ?? _coloredDataUrl;
-      if (url != null) {
-        PlatformBridge.downloadFile(
-          url,
-          '${widget.caseId}_Forensic_Coloured_Portrait.png',
-        );
-        _showDownloadSnackBar('${widget.caseId}_Forensic_Coloured_Portrait.png');
-      } else {
-        _showNotReadySnackBar('Coloured Portrait is rendering, please wait...');
-      }
+    final isColor = activeFormat == 'colored';
+    final url = isColor
+        ? (_coloredDataUrlNotifier.value ?? _coloredDataUrl)
+        : (_sketchDataUrlNotifier.value ?? _sketchDataUrl ?? _latestSketchDataUrl);
+
+    final filename = isColor
+        ? '${widget.caseId}_Forensic_Coloured_Portrait.png'
+        : '${widget.caseId}_Forensic_2D_Sketch.png';
+
+    if (url != null) {
+      PlatformBridge.downloadFile(url, filename);
+      _showDownloadSnackBar(filename);
     } else {
-      final url = _sketchDataUrlNotifier.value ?? _sketchDataUrl ?? _latestSketchDataUrl;
-      if (url != null) {
-        PlatformBridge.downloadFile(
-          url,
-          '${widget.caseId}_Forensic_2D_Sketch.png',
-        );
-        _showDownloadSnackBar('${widget.caseId}_Forensic_2D_Sketch.png');
-      } else {
-        _showNotReadySnackBar('2D Sketch is generating, please wait...');
-      }
+      // Direct instant download fallback through iframe engine
+      PlatformBridge.broadcastMessage({
+        'type': 'DIRECT_DOWNLOAD_IMAGE',
+        'style': isColor ? 'photo' : 'pencil',
+        'filename': filename,
+        'caseId': widget.caseId,
+      });
+      PlatformBridge.postToIframe({
+        'type': 'DIRECT_DOWNLOAD_IMAGE',
+        'style': isColor ? 'photo' : 'pencil',
+        'filename': filename,
+        'caseId': widget.caseId,
+      });
+      _showDownloadSnackBar(filename);
     }
   }
 
@@ -398,44 +408,62 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
     final sketchUrl = _sketchDataUrlNotifier.value ?? _sketchDataUrl ?? _latestSketchDataUrl;
     final colorUrl = _coloredDataUrlNotifier.value ?? _coloredDataUrl;
 
-    int count = 0;
+    final sketchFilename = '${widget.caseId}_Forensic_2D_Sketch.png';
+    final colorFilename = '${widget.caseId}_Forensic_Coloured_Portrait.png';
+
     if (sketchUrl != null) {
-      PlatformBridge.downloadFile(
-        sketchUrl,
-        '${widget.caseId}_Forensic_2D_Sketch.png',
-      );
-      count++;
-    }
-    if (colorUrl != null) {
-      await Future.delayed(const Duration(milliseconds: 350));
-      PlatformBridge.downloadFile(
-        colorUrl,
-        '${widget.caseId}_Forensic_Coloured_Portrait.png',
-      );
-      count++;
+      PlatformBridge.downloadFile(sketchUrl, sketchFilename);
+    } else {
+      PlatformBridge.broadcastMessage({
+        'type': 'DIRECT_DOWNLOAD_IMAGE',
+        'style': 'pencil',
+        'filename': sketchFilename,
+        'caseId': widget.caseId,
+      });
+      PlatformBridge.postToIframe({
+        'type': 'DIRECT_DOWNLOAD_IMAGE',
+        'style': 'pencil',
+        'filename': sketchFilename,
+        'caseId': widget.caseId,
+      });
     }
 
-    if (count > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '✓ Downloaded 2 Forensic files (${widget.caseId}_Forensic_2D_Sketch.png & Coloured Portrait)',
-                  style: const TextStyle(fontFamily: forensicFont, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: AppTheme.primaryCyan,
-        ),
-      );
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    if (colorUrl != null) {
+      PlatformBridge.downloadFile(colorUrl, colorFilename);
     } else {
-      _showNotReadySnackBar('Images are generating, please wait a moment...');
+      PlatformBridge.broadcastMessage({
+        'type': 'DIRECT_DOWNLOAD_IMAGE',
+        'style': 'photo',
+        'filename': colorFilename,
+        'caseId': widget.caseId,
+      });
+      PlatformBridge.postToIframe({
+        'type': 'DIRECT_DOWNLOAD_IMAGE',
+        'style': 'photo',
+        'filename': colorFilename,
+        'caseId': widget.caseId,
+      });
     }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '✓ Downloaded Forensic files (${widget.caseId}_Forensic_2D_Sketch.png & Coloured Portrait)',
+                style: const TextStyle(fontFamily: forensicFont, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppTheme.primaryCyan,
+      ),
+    );
   }
 
   void _showDownloadSnackBar(String filename) {
@@ -472,7 +500,9 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
 
   void _onGenerateSketch() {
     _triggerGenerateSketch(style: 'pencil');
-    _triggerGenerateSketch(style: 'photo');
+    Future.delayed(const Duration(milliseconds: 150), () {
+      _triggerGenerateSketch(style: 'photo');
+    });
 
     String activeFormat = 'sketch'; // 'sketch' or 'colored'
     String selectedSketchStyle = 'pencil'; // 'pencil', 'blueprint', 'noir'
@@ -590,9 +620,7 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
                                 setModalState(() {
                                   activeFormat = 'colored';
                                 });
-                                if (_coloredDataUrlNotifier.value == null) {
-                                  _triggerGenerateSketch(style: 'photo');
-                                }
+                                _triggerGenerateSketch(style: 'photo');
                               },
                               borderRadius: BorderRadius.circular(7),
                               child: AnimatedContainer(
