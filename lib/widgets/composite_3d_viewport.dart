@@ -39,6 +39,7 @@ class _Composite3DViewportState extends State<Composite3DViewport> {
     'beard': 'none',
     'nose': 'none',
     'ears': 'none',
+    'eyes': 'eyes_hazel',
     'skin': 'fair',
   };
 
