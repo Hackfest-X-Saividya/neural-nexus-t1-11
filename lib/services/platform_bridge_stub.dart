@@ -34,5 +34,19 @@ class PlatformBridge {
   }) {
     return mobileFallback;
   }
+
+  static final Map<String, String> _memStorage = {};
+
+  static void setStorage(String key, String value) {
+    _memStorage[key] = value;
+  }
+
+  static String? getStorage(String key) {
+    return _memStorage[key];
+  }
+
+  static void removeStorage(String key) {
+    _memStorage.remove(key);
+  }
 }
 

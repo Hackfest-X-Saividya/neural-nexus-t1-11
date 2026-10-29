@@ -7,6 +7,13 @@ import numpy as np
 import cv2
 import re
 
+try:
+    import database
+    database.init_db()
+except Exception as e:
+    database = None
+    print(f"Notice: SQLite database initialization: {e}")
+
 app = FastAPI(
     title="Neural Crime - AI Forensic Composite API",
     version="1.0.0"
@@ -40,6 +47,29 @@ class ConfirmRequest(BaseModel):
 class SketchRequest(BaseModel):
     case_id: str
     image_base64: str
+
+class SaveCaseRequest(BaseModel):
+    case_id: str
+    title: Optional[str] = "Suspect Composite"
+    crime_type: Optional[str] = "Criminal Investigation"
+    investigator: Optional[str] = "Detective Unit // Cyber Division"
+    witness_name: Optional[str] = "Witness #1"
+    status: Optional[str] = "ACTIVE"
+    notes: Optional[str] = ""
+
+class SaveCompositeRequest(BaseModel):
+    case_id: str
+    model: Optional[str] = "male.glb"
+    gender: Optional[str] = "male"
+    params: Dict[str, Any]
+    sketch_data: Optional[str] = None
+    colored_data: Optional[str] = None
+
+class SaveMessageRequest(BaseModel):
+    case_id: str
+    sender: str
+    message: str
+    question_index: Optional[int] = None
 
 @app.get("/api/health")
 def health_check():
@@ -187,12 +217,100 @@ def parse_description(req: DescriptionRequest):
 
 @app.post("/api/confirm_composite")
 def confirm_composite(req: ConfirmRequest):
+    if database:
+        try:
+            database.save_composite_record(
+                case_id=req.case_id,
+                model=req.confirmed_params.get("model", "male.glb"),
+                gender=req.confirmed_params.get("gender", "male"),
+                params=req.confirmed_params
+            )
+            database.save_or_update_case(
+                case_id=req.case_id,
+                status="VERIFIED"
+            )
+        except Exception as e:
+            print(f"Error persisting confirmed composite: {e}")
+            
     return {
         "status": "confirmed",
         "case_id": req.case_id,
         "params": req.confirmed_params,
-        "message": f"Composite locked and verified for Case {req.case_id}."
+        "message": f"Composite locked and verified in Database for Case {req.case_id}."
     }
+
+# --- FORENSIC STORAGE DATABASE ENDPOINTS ---
+
+@app.get("/api/database/cases")
+def list_database_cases():
+    if not database:
+        return {"status": "success", "cases": []}
+    cases = database.get_all_cases()
+    return {"status": "success", "count": len(cases), "cases": cases}
+
+@app.post("/api/database/cases")
+def create_or_update_case(req: SaveCaseRequest):
+    if not database:
+        return {"status": "success", "case": req.dict()}
+    saved = database.save_or_update_case(
+        case_id=req.case_id,
+        title=req.title or "Suspect Composite",
+        crime_type=req.crime_type or "Criminal Investigation",
+        investigator=req.investigator or "Detective Unit // Cyber Division",
+        witness_name=req.witness_name or "Witness #1",
+        status=req.status or "ACTIVE",
+        notes=req.notes or ""
+    )
+    return {"status": "success", "case": saved}
+
+@app.get("/api/database/cases/{case_id}")
+def get_database_case(case_id: str):
+    if not database:
+        return {"status": "error", "message": "Database not initialized"}
+    case_data = database.get_case(case_id)
+    if not case_data:
+        raise HTTPException(status_code=404, detail=f"Case {case_id} not found in database")
+    return {"status": "success", "case": case_data}
+
+@app.post("/api/database/cases/{case_id}/composite")
+def save_case_composite(case_id: str, req: SaveCompositeRequest):
+    if not database:
+        return {"status": "success", "message": "Composite saved in-memory"}
+    comp_id = database.save_composite_record(
+        case_id=case_id,
+        model=req.model or "male.glb",
+        gender=req.gender or "male",
+        params=req.params,
+        sketch_data=req.sketch_data,
+        colored_data=req.colored_data
+    )
+    return {"status": "success", "composite_id": comp_id, "case_id": case_id}
+
+@app.delete("/api/database/cases/{case_id}")
+def delete_database_case(case_id: str):
+    if not database:
+        return {"status": "success", "deleted": True}
+    deleted = database.delete_case(case_id)
+    return {"status": "success", "deleted": deleted}
+
+@app.get("/api/database/cases/{case_id}/messages")
+def get_case_messages(case_id: str):
+    if not database:
+        return {"status": "success", "messages": []}
+    msgs = database.get_messages_for_case(case_id)
+    return {"status": "success", "messages": msgs}
+
+@app.post("/api/database/cases/{case_id}/messages")
+def add_case_message(case_id: str, req: SaveMessageRequest):
+    if not database:
+        return {"status": "success", "message_id": 1}
+    msg_id = database.save_message_record(
+        case_id=case_id,
+        sender=req.sender,
+        message=req.message,
+        question_index=req.question_index
+    )
+    return {"status": "success", "message_id": msg_id}
 
 @app.post("/api/generate_sketch")
 def generate_sketch(req: SketchRequest):

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/chat_message.dart';
 import '../services/api_service.dart';
+import '../services/forensic_database.dart';
 import '../services/platform_bridge.dart';
 import '../theme/app_theme.dart';
 import '../widgets/composite_3d_viewport.dart';
@@ -324,6 +325,46 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
     });
 
     _scrollToBottom();
+
+    // Auto-persist confirmed composite snapshot to Forensic Database
+    ForensicDatabase.saveCompositeSnapshot(
+      caseId: widget.caseId,
+      params: _currentParams,
+      sketchDataUrl: _sketchDataUrlNotifier.value ?? _sketchDataUrl,
+      coloredDataUrl: _coloredDataUrlNotifier.value ?? _coloredDataUrl,
+      markVerified: true,
+    );
+  }
+
+  void _saveCurrentCompositeToDatabase() {
+    final sketchUrl = _sketchDataUrlNotifier.value ?? _sketchDataUrl ?? _latestSketchDataUrl;
+    final colorUrl = _coloredDataUrlNotifier.value ?? _coloredDataUrl;
+
+    ForensicDatabase.saveCompositeSnapshot(
+      caseId: widget.caseId,
+      params: _currentParams,
+      sketchDataUrl: sketchUrl,
+      coloredDataUrl: colorUrl,
+      markVerified: _currentParams.isConfirmed,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.storage_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '✓ Case ${widget.caseId} composite & assets saved to Forensic Database!',
+                style: const TextStyle(fontFamily: forensicFont, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppTheme.primaryCyan,
+      ),
+    );
   }
 
   void _onConfirmFeaturePressed() {
@@ -358,6 +399,46 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
     });
 
     _scrollToBottom();
+
+    // Auto-persist confirmed composite snapshot to Forensic Database
+    ForensicDatabase.saveCompositeSnapshot(
+      caseId: widget.caseId,
+      params: _currentParams,
+      sketchDataUrl: _sketchDataUrlNotifier.value ?? _sketchDataUrl,
+      coloredDataUrl: _coloredDataUrlNotifier.value ?? _coloredDataUrl,
+      markVerified: true,
+    );
+  }
+
+  void _saveCurrentCompositeToDatabase() {
+    final sketchUrl = _sketchDataUrlNotifier.value ?? _sketchDataUrl ?? _latestSketchDataUrl;
+    final colorUrl = _coloredDataUrlNotifier.value ?? _coloredDataUrl;
+
+    ForensicDatabase.saveCompositeSnapshot(
+      caseId: widget.caseId,
+      params: _currentParams,
+      sketchDataUrl: sketchUrl,
+      coloredDataUrl: colorUrl,
+      markVerified: _currentParams.isConfirmed,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.storage_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '✓ Case ${widget.caseId} composite & assets saved to Forensic Database!',
+                style: const TextStyle(fontFamily: forensicFont, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppTheme.primaryCyan,
+      ),
+    );
   }
 
   void _triggerGenerateSketch({String style = 'pencil'}) {
@@ -881,6 +962,21 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('Close', style: TextStyle(color: AppTheme.textSecondary)),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  _saveCurrentCompositeToDatabase();
+                },
+                icon: const Icon(Icons.storage_rounded, size: 16),
+                label: const Text('Save to DB'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryCyanLight,
+                  side: BorderSide(color: AppTheme.primaryCyan.withOpacity(0.6)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
               OutlinedButton.icon(
                 onPressed: () {
