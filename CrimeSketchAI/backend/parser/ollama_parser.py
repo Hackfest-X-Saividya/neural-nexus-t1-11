@@ -33,7 +33,11 @@ from backend.parser.asset_catalog import (
     EYEBROW_CATALOG,
     VERIFIED_ASSET_ALLOWLIST,
     AssetDefinition,
-    get_asset_by_id
+    get_asset_by_id,
+    resolve_hairstyle,
+    resolve_eyebrow,
+    get_supported_hairstyles_summary,
+    get_unsupported_hairstyle_error
 )
 from backend.parser.ollama_client import (
     OllamaClient,
@@ -112,11 +116,11 @@ Map the witness description into a JSON object with a "features" array:
    [{"asset_type": "hair"|"eyebrows", "asset_id": "<id>"}]
    
    Verified Hairstyles ("asset_type": "hair"):
-   - "afro01": afro, tight curls, voluminous curls
+   - "afro01": afro, curly hair, short curly hair, tight curls, voluminous curls
    - "bob01": classic bob cut, chin-length bob
-   - "bob02": textured bob, wavy bob, shaggy bob
+   - "bob02": textured bob, wavy bob, loose curls, shaggy bob
    - "braid01": braids, long braided hair, plaits
-   - "long01": long straight hair, shoulder-length hair
+   - "long01": long straight hair, long curly hair, shoulder-length hair
    - "ponytail01": ponytail, tied back hair
    - "short01": short crop, crew cut, buzz cut
    - "short02": neat side-parted hair, side part
@@ -351,10 +355,13 @@ class OllamaRefinementParser:
             a_type = str(a_item.get("asset_type", "")).strip().lower()
             if not a_id:
                 raise ParseError(f"AI parser asset #{a_idx} missing 'asset_id'.")
+            resolved_h = resolve_hairstyle(a_id)
+            resolved_eb = resolve_eyebrow(a_id)
+
             if not a_type:
-                if a_id in HAIRSTYLE_CATALOG:
+                if resolved_h:
                     a_type = "hair"
-                elif a_id in EYEBROW_CATALOG:
+                elif resolved_eb:
                     a_type = "eyebrows"
                 else:
                     raise ParseError(f"AI parser asset #{a_idx} has unknown asset_id '{a_id}'.")
@@ -363,16 +370,20 @@ class OllamaRefinementParser:
                 raise ParseError(f"AI parser asset #{a_idx} has invalid asset_type '{a_type}'. Must be 'hair' or 'eyebrows'.")
 
             if a_type == "hair":
-                if a_id not in HAIRSTYLE_CATALOG:
+                if not resolved_h:
                     allowed_h = ", ".join(HAIRSTYLE_CATALOG.keys())
-                    raise ParseError(f"AI parser proposed unsupported hairstyle '{a_id}'. Allowed hairstyles: [{allowed_h}].")
-                asset_def = HAIRSTYLE_CATALOG[a_id]
-                action = "remove" if a_id == "bald" else "swap"
+                    raise ParseError(
+                        f"AI parser proposed unsupported hairstyle '{a_id}'. "
+                        f"Allowed hairstyles: [{allowed_h}]. "
+                        f"Supported hairstyles: {get_supported_hairstyles_summary()}."
+                    )
+                asset_def = resolved_h
+                action = "remove" if asset_def.asset_id == "bald" else "swap"
             else:
-                if a_id not in EYEBROW_CATALOG:
+                if not resolved_eb:
                     allowed_eb = ", ".join(EYEBROW_CATALOG.keys())
                     raise ParseError(f"AI parser proposed unsupported eyebrow style '{a_id}'. Allowed eyebrows: [{allowed_eb}].")
-                asset_def = EYEBROW_CATALOG[a_id]
+                asset_def = resolved_eb
                 action = "swap"
 
             if a_type in seen_asset_types:

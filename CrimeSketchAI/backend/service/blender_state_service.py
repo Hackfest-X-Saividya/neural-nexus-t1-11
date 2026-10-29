@@ -232,9 +232,9 @@ class BlenderStateService:
             try:
                 summary_resp = sender("get_character_summary", {"name": char_name})
                 if isinstance(summary_resp, dict) and summary_resp.get("status") == "ok":
+                    has_queried_assets = True
                     s_res = summary_resp.get("result", {})
-                    if isinstance(s_res, dict) and "equipped_assets" in s_res:
-                        has_queried_assets = True
+                    if isinstance(s_res, dict):
                         raw_assets = s_res.get("equipped_assets", [])
                         for a in raw_assets:
                             if isinstance(a, dict):

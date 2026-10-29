@@ -17,7 +17,10 @@ from backend.parser.asset_catalog import (
     find_hair_by_text,
     find_eyebrow_by_text,
     find_hair_match,
-    find_eyebrow_match
+    find_eyebrow_match,
+    resolve_hairstyle,
+    get_supported_hairstyles_summary,
+    get_unsupported_hairstyle_error
 )
 
 @dataclass
@@ -109,9 +112,17 @@ class RefinementParser:
             if second_h and second_h[0].asset_id != hair_asset.asset_id:
                 raise ParseError("Conflicting hairstyle instructions detected. Please specify only one hairstyle.")
 
-        # If user explicitly asks for hair modification but it doesn't match any catalog style
-        if re.search(r'\bhair\b', lower) and not hair_asset:
-            raise ParseError("Hair modifications are not supported without selecting a verified hairstyle from the catalog.")
+        # If user explicitly asks for hair modification or mentions hairstyles/curls/cuts but it doesn't match any catalog style
+        unsupported_hair_pattern = r'\b(hair|hairstyles?|haircut|curls?|dreadlocks?|dreads|mohawk|mullet|fade|undercut|perm|wig|extensions?)\b'
+        if not hair_asset:
+            hair_term_match = re.search(unsupported_hair_pattern, lower)
+            if hair_term_match:
+                term = hair_term_match.group(1)
+                raise ParseError(
+                    f"Hair modifications are not supported without selecting a verified hairstyle from the catalog. "
+                    f"Requested style '{term}' is not in the allowlist. "
+                    f"Supported hairstyles: {get_supported_hairstyles_summary()}."
+                )
 
         # Check for eyebrow assets
         eyebrow_match = find_eyebrow_match(lower)

@@ -1519,6 +1519,145 @@ class TestAssetMutationSafetyAndExecution:
         assert "State drift detected for hairstyle" in resp.message
         assert len(bridge_calls) == 0  # No mutation commands dispatched
 
+    def test_apply_hair_when_no_eyebrows_equipped(self, temp_db):
+        """Verify hairstyle can be applied when character in Blender has no eyebrows (no false drift)."""
+        initial_state = make_mock_live_state(
+            equipped_hair=EquippedAssetInfo(
+                name="Human.short01",
+                object_type="Hair",
+                asset_source="short01/short01.mhclo",
+                asset_id="short01"
+            ),
+            equipped_eyebrows=None,
+            custom_assets=True
+        )
+        pre_state = make_mock_live_state(
+            equipped_hair=EquippedAssetInfo(
+                name="Human.short01",
+                object_type="Hair",
+                asset_source="short01/short01.mhclo",
+                asset_id="short01"
+            ),
+            equipped_eyebrows=None,
+            custom_assets=True
+        )
+        post_state = make_mock_live_state(
+            equipped_hair=EquippedAssetInfo(
+                name="Human.long01",
+                object_type="Hair",
+                asset_source="long01/long01.mhclo",
+                asset_id="long01"
+            ),
+            equipped_eyebrows=None,
+            custom_assets=True
+        )
+        mock_state = SequenceStateService([initial_state, pre_state, post_state])
+
+        bridge_calls = []
+        def mock_sender(cmd, params):
+            bridge_calls.append((cmd, params))
+            if cmd == "remove_asset":
+                return {"status": "ok", "result": {"removed": True, "object_name": params["name"]}}
+            elif cmd == "add_asset":
+                return {"status": "ok", "result": {"added": True, "asset_object_name": f"Human.{params['fragment'].split('/')[0]}"}}
+            return {"status": "ok", "result": {}}
+
+        refine_srv = RefinementService(db=temp_db, state_service=mock_state)
+        mutation_srv = BlenderMutationService(db=temp_db, state_service=mock_state, command_sender=mock_sender)
+
+        prev = refine_srv.process_dry_run(RefinementRequest(
+            text="Change the hairstyle to long hair.",
+            case_id="NO-EB-001",
+            use_live_state=True
+        ))
+        assert prev.status == "PREVIEW_READY"
+        assert prev.asset_adjustments is not None
+        assert prev.asset_adjustments[0].proposed_asset_id == "long01"
+
+        resp = mutation_srv.apply_refinement(RefinementApplyRequest(
+            preview_log_id=prev.log_id,
+            case_id="NO-EB-001",
+            confirm_apply=True
+        ))
+
+        assert resp.status == "APPLIED"
+        assert resp.verified is True
+        assert resp.error_message is None
+        assert "State drift detected" not in (resp.message or "")
+        cmds = [call[0] for call in bridge_calls]
+        assert cmds == ["remove_asset", "add_asset"]
+
+    def test_apply_eyebrows_when_no_eyebrows_previously_equipped(self, temp_db):
+        """Verify eyebrows can be added when character in Blender previously had none."""
+        initial_state = make_mock_live_state(
+            equipped_hair=EquippedAssetInfo(
+                name="Human.short01",
+                object_type="Hair",
+                asset_source="short01/short01.mhclo",
+                asset_id="short01"
+            ),
+            equipped_eyebrows=None,
+            custom_assets=True
+        )
+        pre_state = make_mock_live_state(
+            equipped_hair=EquippedAssetInfo(
+                name="Human.short01",
+                object_type="Hair",
+                asset_source="short01/short01.mhclo",
+                asset_id="short01"
+            ),
+            equipped_eyebrows=None,
+            custom_assets=True
+        )
+        post_state = make_mock_live_state(
+            equipped_hair=EquippedAssetInfo(
+                name="Human.short01",
+                object_type="Hair",
+                asset_source="short01/short01.mhclo",
+                asset_id="short01"
+            ),
+            equipped_eyebrows=EquippedAssetInfo(
+                name="Human.eyebrow006",
+                object_type="Eyebrows",
+                asset_source="eyebrow006/eyebrow006.mhclo",
+                asset_id="eyebrow006"
+            ),
+            custom_assets=True
+        )
+        mock_state = SequenceStateService([initial_state, pre_state, post_state])
+
+        bridge_calls = []
+        def mock_sender(cmd, params):
+            bridge_calls.append((cmd, params))
+            if cmd == "add_asset":
+                return {"status": "ok", "result": {"added": True, "asset_object_name": f"Human.{params['fragment'].split('/')[0]}"}}
+            return {"status": "ok", "result": {}}
+
+        refine_srv = RefinementService(db=temp_db, state_service=mock_state)
+        mutation_srv = BlenderMutationService(db=temp_db, state_service=mock_state, command_sender=mock_sender)
+
+        prev = refine_srv.process_dry_run(RefinementRequest(
+            text="Thin curved eyebrows.",
+            case_id="ADD-EB-001",
+            use_live_state=True
+        ))
+        assert prev.status == "PREVIEW_READY"
+        assert prev.asset_adjustments is not None
+        assert prev.asset_adjustments[0].action == "add"
+        assert prev.asset_adjustments[0].current_asset_id is None
+
+        resp = mutation_srv.apply_refinement(RefinementApplyRequest(
+            preview_log_id=prev.log_id,
+            case_id="ADD-EB-001",
+            confirm_apply=True
+        ))
+
+        assert resp.status == "APPLIED"
+        assert resp.verified is True
+        # remove_asset was not called because there were no eyebrows to remove
+        cmds = [call[0] for call in bridge_calls]
+        assert cmds == ["add_asset"]
+
     def test_apply_asset_rollback_on_add_failure(self, temp_db):
         """Verify rollback restores old hair if add_asset fails."""
         initial_state = make_mock_live_state(

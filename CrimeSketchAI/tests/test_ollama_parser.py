@@ -918,4 +918,92 @@ class TestApiOllamaIntegration:
         with pytest.raises(ParseError, match="Conflicting or duplicate asset instructions"):
             parser.parse("Give him an afro and a bob cut.")
 
+    def test_ai_parsing_curly_alias_resolves_to_afro01(self):
+        """AI parser canonicalizes 'curly' or 'curly_hair' alias to verified 'afro01'."""
+        def mock_ai(method, url, payload):
+            return {
+                "message": {
+                    "content": json.dumps({
+                        "features": [],
+                        "assets": [{"asset_type": "hair", "asset_id": "curly"}]
+                    })
+                }
+            }
+
+        client = OllamaClient(http_sender=mock_ai)
+        parser = OllamaRefinementParser(client=client)
+
+        res = parser.parse("A suspect with curly hair.")
+        assert res.feature_id == "asset_customization"
+        assert res.asset_adjustments is not None
+        assert len(res.asset_adjustments) == 1
+        adj = res.asset_adjustments[0]
+        assert adj.asset_id == "afro01"
+        assert adj.fragment == "afro01/afro01.mhclo"
+        assert adj.action == "swap"
+
+    def test_ai_parsing_loose_curls_resolves_to_bob02(self):
+        """AI parser canonicalizes 'loose_curls' alias to verified 'bob02'."""
+        def mock_ai(method, url, payload):
+            return {
+                "message": {
+                    "content": json.dumps({
+                        "features": [],
+                        "assets": [{"asset_type": "hair", "asset_id": "loose_curls"}]
+                    })
+                }
+            }
+
+        client = OllamaClient(http_sender=mock_ai)
+        parser = OllamaRefinementParser(client=client)
+
+        res = parser.parse("Change hairstyle to loose curls.")
+        assert res.feature_id == "asset_customization"
+        assert res.asset_adjustments[0].asset_id == "bob02"
+        assert res.asset_adjustments[0].fragment == "bob02/bob02.mhclo"
+
+    def test_ai_parsing_long_curly_resolves_to_long01(self):
+        """AI parser canonicalizes 'long_curly_hair' alias to verified 'long01'."""
+        def mock_ai(method, url, payload):
+            return {
+                "message": {
+                    "content": json.dumps({
+                        "features": [],
+                        "assets": [{"asset_type": "hair", "asset_id": "long_curly_hair"}]
+                    })
+                }
+            }
+
+        client = OllamaClient(http_sender=mock_ai)
+        parser = OllamaRefinementParser(client=client)
+
+        res = parser.parse("The witness described long curly hair.")
+        assert res.feature_id == "asset_customization"
+        assert res.asset_adjustments[0].asset_id == "long01"
+        assert res.asset_adjustments[0].fragment == "long01/long01.mhclo"
+
+    def test_ai_parsing_unsupported_hairstyle_rejected_with_supported_list(self):
+        """AI parser rejects unsupported hairstyle proposed by model and explains supported options."""
+        def mock_ai(method, url, payload):
+            return {
+                "message": {
+                    "content": json.dumps({
+                        "features": [],
+                        "assets": [{"asset_type": "hair", "asset_id": "dreadlocks"}]
+                    })
+                }
+            }
+
+        client = OllamaClient(http_sender=mock_ai)
+        parser = OllamaRefinementParser(client=client)
+
+        with pytest.raises(ParseError) as exc_info:
+            parser.parse("The suspect has dreadlocks.")
+        msg = str(exc_info.value)
+        assert "unsupported hairstyle 'dreadlocks'" in msg
+        assert "Supported hairstyles:" in msg
+        assert "afro01" in msg
+        assert "bob02" in msg
+
+
 

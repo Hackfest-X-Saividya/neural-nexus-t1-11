@@ -39,12 +39,26 @@ HAIRSTYLE_CATALOG: Dict[str, AssetDefinition] = {
         fragment="afro01/afro01.mhclo",
         object_type="Hair",
         keywords=(
-            "afro hair",
             "voluminous curly hair",
+            "voluminous curls",
+            "short curly hair",
+            "tight curly hair",
+            "curly afro hair",
+            "curly afro",
             "tight curls",
+            "tight curl",
+            "short curls",
+            "short curl",
+            "curly hairstyle",
+            "curly haircut",
+            "curly style",
             "curly hair",
+            "afro haircut",
             "afro style",
+            "afro hair",
             "afro",
+            "curls",
+            "curly",
         ),
         description="Voluminous afro with tight curls."
     ),
@@ -80,8 +94,18 @@ HAIRSTYLE_CATALOG: Dict[str, AssetDefinition] = {
             "wavy bob",
             "shaggy bob",
             "layered bob",
+            "loose curly hair",
+            "loose curls",
+            "loose curl",
+            "wavy curly hair",
+            "wavy curls",
+            "wavy curl",
+            "curly bob",
+            "wavy haircut",
+            "wavy hairstyle",
+            "wavy hair",
         ),
-        description="Textured, wavy, layered bob cut."
+        description="Textured, wavy, layered bob cut (loose curls)."
     ),
     "braid01": AssetDefinition(
         asset_id="braid01",
@@ -112,11 +136,14 @@ HAIRSTYLE_CATALOG: Dict[str, AssetDefinition] = {
             "straight long hair",
             "shoulder-length hair",
             "shoulder length hair",
+            "long curly hair",
+            "curly long hair",
             "flowing long hair",
+            "long curls",
             "long haircut",
             "long hair",
         ),
-        description="Long straight flowing hair."
+        description="Long straight flowing hair / long hairstyle."
     ),
     "ponytail01": AssetDefinition(
         asset_id="ponytail01",
@@ -509,3 +536,256 @@ def get_asset_by_fragment(fragment: str) -> Optional[AssetDefinition]:
         if asset.fragment and asset.fragment.lower() == clean:
             return asset
     return None
+
+
+# -----------------------------------------------------------------------------
+# CANONICAL ALIASES & RESOLUTION UTILITIES
+# -----------------------------------------------------------------------------
+
+HAIRSTYLE_ALIASES: Dict[str, str] = {
+    # Curly hair aliases -> afro01 (afro with tight curls)
+    "curly": "afro01",
+    "curls": "afro01",
+    "curly_hair": "afro01",
+    "curly hair": "afro01",
+    "curly_haircut": "afro01",
+    "curly haircut": "afro01",
+    "curly_hairstyle": "afro01",
+    "curly hairstyle": "afro01",
+    "short_curly_hair": "afro01",
+    "short curly hair": "afro01",
+    "short_curls": "afro01",
+    "short curls": "afro01",
+    "tight_curls": "afro01",
+    "tight curls": "afro01",
+    "tight_curl": "afro01",
+    "tight curl": "afro01",
+    "tight_curly_hair": "afro01",
+    "tight curly hair": "afro01",
+    "voluminous_curls": "afro01",
+    "voluminous curls": "afro01",
+    "voluminous_curly_hair": "afro01",
+    "voluminous curly hair": "afro01",
+    "curly_afro": "afro01",
+    "curly afro": "afro01",
+    "afro": "afro01",
+    "afro_hair": "afro01",
+    "afro hair": "afro01",
+
+    # Loose curls / wavy aliases -> bob02 (textured wavy bob)
+    "loose_curls": "bob02",
+    "loose curls": "bob02",
+    "loose_curl": "bob02",
+    "loose curl": "bob02",
+    "loose_curly_hair": "bob02",
+    "loose curly hair": "bob02",
+    "wavy": "bob02",
+    "wavy_hair": "bob02",
+    "wavy hair": "bob02",
+    "wavy_curls": "bob02",
+    "wavy curls": "bob02",
+    "wavy_bob": "bob02",
+    "wavy bob": "bob02",
+    "textured_bob": "bob02",
+    "textured bob": "bob02",
+    "shaggy_bob": "bob02",
+    "shaggy bob": "bob02",
+    "curly_bob": "bob02",
+    "curly bob": "bob02",
+
+    # Long hair / long curly aliases -> long01
+    "long_curly_hair": "long01",
+    "long curly hair": "long01",
+    "curly_long_hair": "long01",
+    "curly long hair": "long01",
+    "long_curls": "long01",
+    "long curls": "long01",
+    "long_hair": "long01",
+    "long hair": "long01",
+    "straight_long_hair": "long01",
+    "straight long hair": "long01",
+    "shoulder_length": "long01",
+    "shoulder length": "long01",
+
+    # Bob cut aliases -> bob01
+    "bob": "bob01",
+    "bob_cut": "bob01",
+    "bob cut": "bob01",
+    "chin_length_bob": "bob01",
+    "chin length bob": "bob01",
+
+    # Braids aliases -> braid01
+    "braids": "braid01",
+    "braid": "braid01",
+    "cornrows": "braid01",
+    "plaits": "braid01",
+
+    # Ponytail aliases -> ponytail01
+    "ponytail": "ponytail01",
+    "pony_tail": "ponytail01",
+    "pony tail": "ponytail01",
+    "tied_back_hair": "ponytail01",
+    "tied back hair": "ponytail01",
+
+    # Short crop aliases -> short01
+    "short_hair": "short01",
+    "short hair": "short01",
+    "short_crop": "short01",
+    "short crop": "short01",
+    "crew_cut": "short01",
+    "crew cut": "short01",
+    "buzz_cut": "short01",
+    "buzz cut": "short01",
+
+    # Side-parted aliases -> short02
+    "side_part": "short02",
+    "side part": "short02",
+    "side_parted": "short02",
+    "side parted": "short02",
+    "comb_over": "short02",
+    "comb over": "short02",
+
+    # Pixie cut aliases -> short03
+    "pixie": "short03",
+    "pixie_cut": "short03",
+    "pixie cut": "short03",
+
+    # Tousled aliases -> short04
+    "tousled": "short04",
+    "messy_hair": "short04",
+    "messy hair": "short04",
+    "spiky_hair": "short04",
+    "spiky hair": "short04",
+
+    # Bald aliases -> bald
+    "bald": "bald",
+    "shaved": "bald",
+    "shaved_head": "bald",
+    "shaved head": "bald",
+    "hairless": "bald",
+    "no_hair": "bald",
+    "no hair": "bald",
+}
+
+EYEBROW_ALIASES: Dict[str, str] = {
+    "natural_rounded": "eyebrow001",
+    "natural rounded": "eyebrow001",
+    "straight_soft": "eyebrow002",
+    "straight soft": "eyebrow002",
+    "subtle_medium": "eyebrow003",
+    "subtle medium": "eyebrow003",
+    "sharp_arched": "eyebrow004",
+    "sharp arched": "eyebrow004",
+    "defined_tapered": "eyebrow005",
+    "defined tapered": "eyebrow005",
+    "thin_curved": "eyebrow006",
+    "thin curved": "eyebrow006",
+    "pencil_thin": "eyebrow006",
+    "pencil thin": "eyebrow006",
+    "thin": "eyebrow006",
+    "thin_eyebrows": "eyebrow006",
+    "thin eyebrows": "eyebrow006",
+    "straight": "eyebrow007",
+    "straight_eyebrows": "eyebrow007",
+    "straight eyebrows": "eyebrow007",
+    "angled": "eyebrow008",
+    "angled_eyebrows": "eyebrow008",
+    "angled eyebrows": "eyebrow008",
+    "arched": "eyebrow009",
+    "arched_eyebrows": "eyebrow009",
+    "arched eyebrows": "eyebrow009",
+    "thick": "eyebrow010",
+    "thick_eyebrows": "eyebrow010",
+    "thick eyebrows": "eyebrow010",
+    "bushy": "eyebrow011",
+    "bushy_eyebrows": "eyebrow011",
+    "bushy eyebrows": "eyebrow011",
+    "wide_full": "eyebrow012",
+    "wide full": "eyebrow012",
+}
+
+
+def resolve_hairstyle(identifier_or_text: str) -> Optional[AssetDefinition]:
+    """
+    Resolves an asset ID, alias, or natural language phrase to a verified AssetDefinition.
+    Returns None if the hairstyle cannot be mapped to a verified catalog asset.
+    Strictly preserves the allowlist - never returns an unverified asset.
+    """
+    if not identifier_or_text or not identifier_or_text.strip():
+        return None
+
+    clean = identifier_or_text.strip().lower()
+
+    # 1. Exact catalog ID match
+    if clean in HAIRSTYLE_CATALOG:
+        return HAIRSTYLE_CATALOG[clean]
+
+    # 2. Explicit alias dictionary match
+    if clean in HAIRSTYLE_ALIASES:
+        canonical_id = HAIRSTYLE_ALIASES[clean]
+        return HAIRSTYLE_CATALOG.get(canonical_id)
+
+    clean_spaced = clean.replace('_', ' ')
+    if clean_spaced in HAIRSTYLE_ALIASES:
+        canonical_id = HAIRSTYLE_ALIASES[clean_spaced]
+        return HAIRSTYLE_CATALOG.get(canonical_id)
+
+    # 3. Natural language keyword search
+    matched = find_hair_by_text(clean_spaced)
+    if matched:
+        return matched
+
+    return None
+
+
+def resolve_eyebrow(identifier_or_text: str) -> Optional[AssetDefinition]:
+    """
+    Resolves an eyebrow ID, alias, or natural language phrase to a verified AssetDefinition.
+    Returns None if the eyebrow style cannot be mapped to a verified catalog asset.
+    """
+    if not identifier_or_text or not identifier_or_text.strip():
+        return None
+
+    clean = identifier_or_text.strip().lower()
+
+    if clean in EYEBROW_CATALOG:
+        return EYEBROW_CATALOG[clean]
+
+    if clean in EYEBROW_ALIASES:
+        canonical_id = EYEBROW_ALIASES[clean]
+        return EYEBROW_CATALOG.get(canonical_id)
+
+    clean_spaced = clean.replace('_', ' ')
+    if clean_spaced in EYEBROW_ALIASES:
+        canonical_id = EYEBROW_ALIASES[clean_spaced]
+        return EYEBROW_CATALOG.get(canonical_id)
+
+    matched = find_eyebrow_by_text(clean_spaced)
+    if matched:
+        return matched
+
+    return None
+
+
+def get_supported_hairstyles_summary() -> str:
+    """Returns a formatted human-readable list of supported hairstyles."""
+    items = [
+        "Afro / Curly (tight curls: afro01)",
+        "Classic Bob (bob01)",
+        "Textured Bob / Wavy (loose curls: bob02)",
+        "Braids (braid01)",
+        "Long Hair (long01)",
+        "Ponytail (ponytail01)",
+        "Short Crop / Crew Cut (short01)",
+        "Side-Parted Short (short02)",
+        "Pixie Cut (short03)",
+        "Tousled Short (short04)",
+        "Bald (bald)"
+    ]
+    return ", ".join(items)
+
+
+def get_unsupported_hairstyle_error(requested: Optional[str] = None) -> str:
+    """Returns a clear explanatory error message for unsupported hairstyle requests."""
+    prefix = f"Hairstyle '{requested}' is not supported. " if requested else "Hair modifications are not supported without selecting a verified hairstyle from the catalog. "
+    return f"{prefix}Supported hairstyles: {get_supported_hairstyles_summary()}."

@@ -13,7 +13,11 @@ from backend.parser.asset_catalog import (
     find_hair_by_text,
     find_eyebrow_by_text,
     get_asset_by_id,
-    get_asset_by_fragment
+    get_asset_by_fragment,
+    resolve_hairstyle,
+    resolve_eyebrow,
+    get_supported_hairstyles_summary,
+    get_unsupported_hairstyle_error
 )
 
 
@@ -119,4 +123,103 @@ def test_get_asset_by_fragment():
     assert asset_eb.asset_id == "eyebrow003"
 
     assert get_asset_by_fragment("nonexistent/foo.mhclo") is None
+
+
+def test_curly_hair_natural_language_variations():
+    """Verify natural language matching for curly hairstyle variations."""
+    cases = [
+        ("The suspect has curly hair.", "afro01"),
+        ("A person with short curly hair.", "afro01"),
+        ("The witness described long curly hair.", "long01"),
+        ("He had tight curls on his head.", "afro01"),
+        ("She had loose curls.", "bob02"),
+        ("A suspect with loose curly hair.", "bob02"),
+        ("He had wavy curls.", "bob02"),
+        ("Voluminous curly hair.", "afro01"),
+        ("A person with curly afro.", "afro01"),
+        ("Make the hair curly.", "afro01"),
+        ("The suspect has curls.", "afro01"),
+    ]
+    for text, expected_id in cases:
+        match = find_hair_by_text(text)
+        assert match is not None, f"Failed to match hairstyle in: '{text}'"
+        assert match.asset_id == expected_id, f"Expected {expected_id}, got {match.asset_id} in '{text}'"
+
+
+def test_resolve_hairstyle_canonical_and_aliases():
+    """Verify resolve_hairstyle maps IDs, snake_case variants, and aliases to canonical assets."""
+    # Exact IDs
+    assert resolve_hairstyle("afro01").asset_id == "afro01"
+    assert resolve_hairstyle("bob01").asset_id == "bob01"
+    assert resolve_hairstyle("bob02").asset_id == "bob02"
+    assert resolve_hairstyle("long01").asset_id == "long01"
+    assert resolve_hairstyle("bald").asset_id == "bald"
+
+    # Curly aliases
+    assert resolve_hairstyle("curly").asset_id == "afro01"
+    assert resolve_hairstyle("curly_hair").asset_id == "afro01"
+    assert resolve_hairstyle("curly hair").asset_id == "afro01"
+    assert resolve_hairstyle("curls").asset_id == "afro01"
+    assert resolve_hairstyle("tight_curls").asset_id == "afro01"
+    assert resolve_hairstyle("tight curls").asset_id == "afro01"
+    assert resolve_hairstyle("short_curly_hair").asset_id == "afro01"
+    assert resolve_hairstyle("short curly hair").asset_id == "afro01"
+
+    # Loose curls / wavy aliases
+    assert resolve_hairstyle("loose_curls").asset_id == "bob02"
+    assert resolve_hairstyle("loose curls").asset_id == "bob02"
+    assert resolve_hairstyle("wavy").asset_id == "bob02"
+    assert resolve_hairstyle("wavy_hair").asset_id == "bob02"
+    assert resolve_hairstyle("curly_bob").asset_id == "bob02"
+
+    # Long curly aliases
+    assert resolve_hairstyle("long_curly_hair").asset_id == "long01"
+    assert resolve_hairstyle("long curly hair").asset_id == "long01"
+
+
+def test_resolve_hairstyle_strict_allowlist_enforcement():
+    """Verify that unverified/arbitrary hairstyles return None and cannot bypass allowlist."""
+    unsupported = [
+        "dreadlocks",
+        "dreads",
+        "mohawk",
+        "mullet",
+        "rainbow_hair",
+        "perm",
+        "fade",
+        "undercut",
+        "unknown_hair_123",
+        "DROP TABLE users;",
+        "",
+        "   "
+    ]
+    for raw in unsupported:
+        assert resolve_hairstyle(raw) is None, f"Expected None for unsupported hairstyle '{raw}'"
+
+
+def test_get_supported_hairstyles_summary():
+    """Verify supported hairstyles summary lists all verified catalog styles."""
+    summary = get_supported_hairstyles_summary()
+    assert "afro01" in summary
+    assert "bob01" in summary
+    assert "bob02" in summary
+    assert "braid01" in summary
+    assert "long01" in summary
+    assert "ponytail01" in summary
+    assert "short01" in summary
+    assert "short02" in summary
+    assert "short03" in summary
+    assert "short04" in summary
+    assert "bald" in summary
+    assert "loose curls" in summary
+    assert "tight curls" in summary
+
+
+def test_get_unsupported_hairstyle_error():
+    """Verify clear error message for unsupported hairstyles."""
+    err = get_unsupported_hairstyle_error("dreadlocks")
+    assert "Hairstyle 'dreadlocks' is not supported." in err
+    assert "Supported hairstyles:" in err
+    assert "afro01" in err
+    assert "bob02" in err
 

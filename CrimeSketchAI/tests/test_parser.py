@@ -440,3 +440,97 @@ class TestAssetParsing:
             parser.parse("A suspect with a beard and an afro.")
 
 
+class TestCurlyHairstylesAndAllowlistEnforcement:
+    def test_curly_hair_maps_to_afro01(self, parser):
+        res = parser.parse("The suspect has curly hair.")
+        assert res.feature_id == "asset_customization"
+        assert res.asset_adjustments is not None
+        assert len(res.asset_adjustments) == 1
+        adj = res.asset_adjustments[0]
+        assert adj.asset_id == "afro01"
+        assert adj.display_name == "Afro"
+        assert adj.fragment == "afro01/afro01.mhclo"
+        assert adj.action == "swap"
+
+    def test_short_curly_hair_maps_to_afro01(self, parser):
+        res = parser.parse("A suspect with short curly hair.")
+        assert res.feature_id == "asset_customization"
+        assert res.asset_adjustments[0].asset_id == "afro01"
+
+    def test_tight_curls_maps_to_afro01(self, parser):
+        res = parser.parse("The suspect had tight curls.")
+        assert res.feature_id == "asset_customization"
+        assert res.asset_adjustments[0].asset_id == "afro01"
+
+    def test_loose_curls_maps_to_bob02(self, parser):
+        res = parser.parse("She had loose curls.")
+        assert res.feature_id == "asset_customization"
+        assert res.asset_adjustments is not None
+        assert len(res.asset_adjustments) == 1
+        adj = res.asset_adjustments[0]
+        assert adj.asset_id == "bob02"
+        assert adj.display_name == "Textured Bob"
+        assert adj.fragment == "bob02/bob02.mhclo"
+
+    def test_long_curly_hair_maps_to_long01(self, parser):
+        res = parser.parse("The witness described long curly hair.")
+        assert res.feature_id == "asset_customization"
+        assert res.asset_adjustments is not None
+        assert len(res.asset_adjustments) == 1
+        adj = res.asset_adjustments[0]
+        assert adj.asset_id == "long01"
+        assert adj.display_name == "Long Hair"
+        assert adj.fragment == "long01/long01.mhclo"
+
+    def test_make_the_hair_curly(self, parser):
+        res = parser.parse("Make the hair curly.")
+        assert res.feature_id == "asset_customization"
+        assert res.asset_adjustments[0].asset_id == "afro01"
+
+    def test_the_suspect_has_curls(self, parser):
+        res = parser.parse("The suspect has curls.")
+        assert res.feature_id == "asset_customization"
+        assert res.asset_adjustments[0].asset_id == "afro01"
+
+    def test_curly_hair_and_geometry_combined(self, parser):
+        res = parser.parse("A suspect with curly hair and a wide jaw.")
+        assert res.feature_id == "jaw_width"
+        assert res.direction == 1
+        assert res.asset_adjustments is not None
+        assert len(res.asset_adjustments) == 1
+        assert res.asset_adjustments[0].asset_id == "afro01"
+
+    def test_loose_curls_and_eyebrows_combined(self, parser):
+        res = parser.parse("A person with loose curls and thin curved eyebrows.")
+        assert res.feature_id == "asset_customization"
+        assert len(res.asset_adjustments) == 2
+        types = {a.asset_type: a for a in res.asset_adjustments}
+        assert types["hair"].asset_id == "bob02"
+        assert types["eyebrows"].asset_id == "eyebrow006"
+
+    def test_unsupported_hairstyle_dreadlocks_rejected_with_supported_list(self, parser):
+        with pytest.raises(ParseError) as exc_info:
+            parser.parse("The suspect has dreadlocks.")
+        msg = str(exc_info.value)
+        assert "Hair modifications are not supported" in msg
+        assert "dreadlocks" in msg
+        assert "Supported hairstyles:" in msg
+        assert "afro01" in msg
+        assert "bob02" in msg
+
+    def test_unsupported_hairstyle_mohawk_rejected_with_supported_list(self, parser):
+        with pytest.raises(ParseError) as exc_info:
+            parser.parse("Give the suspect a mohawk.")
+        msg = str(exc_info.value)
+        assert "Hair modifications are not supported" in msg
+        assert "mohawk" in msg
+        assert "Supported hairstyles:" in msg
+
+    def test_arbitrary_hair_name_rejected(self, parser):
+        with pytest.raises(ParseError) as exc_info:
+            parser.parse("Change hair to futuristic_cyber_hair.")
+        msg = str(exc_info.value)
+        assert "Hair modifications are not supported" in msg
+        assert "Supported hairstyles:" in msg
+
+

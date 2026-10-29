@@ -245,20 +245,24 @@ class RefinementService:
         live_hair = getattr(live_resp, 'equipped_hair', None) if (request.use_live_state and live_resp) else None
         live_eb = getattr(live_resp, 'equipped_eyebrows', None) if (request.use_live_state and live_resp) else None
 
-        curr_hair = live_hair or EquippedAssetInfo(
-            name=f"{character_name}.short01",
-            object_type="Hair",
-            asset_source="short01/short01.mhclo",
-            asset_id="short01",
-            in_current_scene=True
-        )
-        curr_eb = live_eb or EquippedAssetInfo(
-            name=f"{character_name}.eyebrow003",
-            object_type="Eyebrows",
-            asset_source="eyebrow003/eyebrow003.mhclo",
-            asset_id="eyebrow003",
-            in_current_scene=True
-        )
+        if request.use_live_state:
+            curr_hair = live_hair
+            curr_eb = live_eb
+        else:
+            curr_hair = EquippedAssetInfo(
+                name=f"{character_name}.short01",
+                object_type="Hair",
+                asset_source="short01/short01.mhclo",
+                asset_id="short01",
+                in_current_scene=True
+            )
+            curr_eb = EquippedAssetInfo(
+                name=f"{character_name}.eyebrow003",
+                object_type="Eyebrows",
+                asset_source="eyebrow003/eyebrow003.mhclo",
+                asset_id="eyebrow003",
+                in_current_scene=True
+            )
 
         for adj in raw_asset_adjs:
             if adj.asset_type == "hair":
@@ -287,13 +291,18 @@ class RefinementService:
                     proposed_fragment=prop_frag
                 ))
             elif adj.asset_type == "eyebrows":
-                cur_id = curr_eb.asset_id if curr_eb else "eyebrow003"
-                cur_name = curr_eb.name if curr_eb else f"{character_name}.eyebrow003"
-                cur_frag = curr_eb.asset_source if curr_eb else "eyebrow003/eyebrow003.mhclo"
+                cur_id = curr_eb.asset_id if curr_eb else None
+                cur_name = curr_eb.name if curr_eb else None
+                cur_frag = curr_eb.asset_source if curr_eb else None
                 prop_id = adj.asset_id
                 prop_frag = adj.fragment
                 prop_disp = adj.display_name
-                action = "keep" if cur_id == prop_id else "swap"
+                if cur_id == prop_id:
+                    action = "keep"
+                elif cur_id is None or cur_id == "none":
+                    action = "add"
+                else:
+                    action = "swap"
                 asset_previews.append(AssetAdjustmentPreview(
                     asset_type="eyebrows",
                     action=action,
@@ -330,9 +339,10 @@ class RefinementService:
             asset_descriptions = []
             for ap in asset_previews:
                 if ap.proposed_asset_id == "bald":
-                    asset_descriptions.append(f"Hair: {ap.current_asset_id} -> Bald (remove)")
+                    asset_descriptions.append(f"Hair: {ap.current_asset_id or 'none'} -> Bald (remove)")
                 else:
-                    asset_descriptions.append(f"{ap.asset_type.capitalize()}: {ap.current_asset_id} -> {ap.proposed_display_name}")
+                    cur_desc = ap.current_asset_id or "none"
+                    asset_descriptions.append(f"{ap.asset_type.capitalize()}: {cur_desc} -> {ap.proposed_display_name}")
 
             preview_msg = (
                 f"Live dry-run preview: Proposed asset customization [{', '.join(asset_descriptions)}] "
@@ -806,7 +816,7 @@ class RefinementService:
                 preview_message += f" Notice: {first_prev.boundary_warning}"
 
         if asset_previews:
-            asset_descs = [f"{a.asset_type.capitalize()}: {a.current_asset_id} -> {a.proposed_display_name}" for a in asset_previews]
+            asset_descs = [f"{a.asset_type.capitalize()}: {a.current_asset_id or 'none'} -> {a.proposed_display_name}" for a in asset_previews]
             preview_message = f"{preview_message} Asset changes: [{', '.join(asset_descs)}]."
 
         ref_note = (

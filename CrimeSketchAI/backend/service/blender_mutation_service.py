@@ -758,28 +758,38 @@ class BlenderMutationService:
 
         # Also verify equipped asset state drift if assets are involved
         if not drift_detected and validated_assets:
+            target_asset_types = {a.get("asset_type") for a in validated_assets}
+
+            # Check hairstyle drift:
             snap_hair = details.get("equipped_hair")
-            if snap_hair:
-                exp_h = snap_hair.get("asset_source")
-                live_h = getattr(pre_live, 'equipped_hair', None)
-                live_h_src = live_h.asset_source if live_h else None
+            exp_h = snap_hair.get("asset_source") if snap_hair else None
+            live_h = getattr(pre_live, 'equipped_hair', None)
+            live_h_src = live_h.asset_source if live_h else None
+
+            # If hair is actively modified, or if an equipped_hair baseline was recorded, check drift
+            if "hair" in target_asset_types or snap_hair is not None:
                 if exp_h != live_h_src:
                     drift_detected = True
                     drift_msg = (
                         f"State drift detected for hairstyle on character 'Human'. "
                         f"Baseline was '{exp_h}', currently '{live_h_src}'."
                     )
+
+            # Check eyebrow drift:
             snap_eb = details.get("equipped_eyebrows")
-            if snap_eb and not drift_detected:
-                exp_eb = snap_eb.get("asset_source")
-                live_eb = getattr(pre_live, 'equipped_eyebrows', None)
-                live_eb_src = live_eb.asset_source if live_eb else None
-                if exp_eb != live_eb_src:
-                    drift_detected = True
-                    drift_msg = (
-                        f"State drift detected for eyebrows on character 'Human'. "
-                        f"Baseline was '{exp_eb}', currently '{live_eb_src}'."
-                    )
+            exp_eb = snap_eb.get("asset_source") if snap_eb else None
+            live_eb = getattr(pre_live, 'equipped_eyebrows', None)
+            live_eb_src = live_eb.asset_source if live_eb else None
+
+            # If eyebrows are actively modified, or if an equipped_eyebrows baseline was recorded, check drift
+            if not drift_detected:
+                if "eyebrows" in target_asset_types or snap_eb is not None:
+                    if exp_eb != live_eb_src:
+                        drift_detected = True
+                        drift_msg = (
+                            f"State drift detected for eyebrows on character 'Human'. "
+                            f"Baseline was '{exp_eb}', currently '{live_eb_src}'."
+                        )
 
         if drift_detected:
             full_drift_error = f"Application rejected: {drift_msg} Regenerate a fresh preview before applying."
@@ -951,11 +961,11 @@ class BlenderMutationService:
                             self.db.complete_preview_apply(request.preview_log_id, "FAILED", error_message=error_msg)
                             return self._failed_apply(request, resp_fid, resp_display, error_msg)
 
-                            if not isinstance(rem_resp, dict) or rem_resp.get("status") != "ok" or not rem_resp.get("result", {}).get("removed", False):
-                                self._execute_rollback(rollback_stack, sender)
-                                error_msg = f"Bridge failed to remove previous eyebrows '{cur_eb_name}': {rem_resp}"
-                                self.db.complete_preview_apply(request.preview_log_id, "FAILED", error_message=error_msg)
-                                return self._failed_apply(request, resp_fid, resp_display, error_msg)
+                        if not isinstance(rem_resp, dict) or rem_resp.get("status") != "ok" or not rem_resp.get("result", {}).get("removed", False):
+                            self._execute_rollback(rollback_stack, sender)
+                            error_msg = f"Bridge failed to remove previous eyebrows '{cur_eb_name}': {rem_resp}"
+                            self.db.complete_preview_apply(request.preview_log_id, "FAILED", error_message=error_msg)
+                            return self._failed_apply(request, resp_fid, resp_display, error_msg)
 
                         if cur_eb_src:
                             rollback_stack.append({

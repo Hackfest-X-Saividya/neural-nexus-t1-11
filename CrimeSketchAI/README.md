@@ -1,691 +1,504 @@
-# CrimeSketchAI: Natural-Language Facial Refinement Backend
+# CrimeSketchAI: Forensic Facial Composite & 3D Biometric Reconstruction Studio
 
-CrimeSketchAI is an AI-assisted criminal suspect facial sketch and composite refinement system. This module implements the **FastAPI Natural-Language Refinement Backend** with hardened dry-run refinement and a **read-only live Blender state inspector**.
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB.svg?style=flat&logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6.svg?style=flat&logo=typescript)](https://www.typescriptlang.org)
+[![Blender](https://img.shields.io/badge/Blender-5.2-E87D0D.svg?style=flat&logo=blender)](https://www.blender.org)
+[![MPFB2](https://img.shields.io/badge/MPFB-2.0.2-4B6EAF.svg?style=flat)](http://mpfb.net)
+[![Ollama](https://img.shields.io/badge/Ollama-Qwen3%3A4B-000000.svg?style=flat&logo=ollama)](https://ollama.com)
+[![Pytest](https://img.shields.io/badge/Pytest-174%20Passed-green.svg?style=flat)](https://docs.pytest.org)
+[![Vitest](https://img.shields.io/badge/Vitest-29%20Passed-green.svg?style=flat)](https://vitest.dev)
+[![WCAG AA](https://img.shields.io/badge/A11y-WCAG%202.1%20AA%20Compliant-blue.svg?style=flat)](https://www.w3.org/WAI/WCAG21/quickref/)
 
-It parses conversational natural-language adjustments from forensic interviewers (e.g., *"Make the nose slightly wider"*, *"Increase the chin prominence slightly"*, *"Make the cheekbones more prominent"*) and maps them strictly to verified 3D morph targets in MakeHuman Plugin for Blender (MPFB).
+**CrimeSketchAI** is an AI-assisted forensic facial composite and 3D biometric reconstruction studio. It bridges the gap between subjective eyewitness testimony and accurate 3D anatomical modeling by interpreting conversational, natural-language witness descriptions (e.g., *"A suspect with a broad nose, prominent cheekbones, an afro, and a wide jaw"*) and translating them into verifiable, mathematically bounded 3D morph targets in **Blender 5.2** via the **MakeHuman Plugin for Blender (MPFB)**.
 
----
-
-## 1. Safety Architecture & State Management
-
-* **Read-Only Live State Inspection (`GET /state`):** Queries the live target stack from Blender via the official MPFB bridge (`127.0.0.1:9877`). Strictly read-only: uses `get_target_stack` exclusively and **never invokes `mpfb_set_targets`** or any mutating command.
-* **No Cached Fallback on Live State Failure:** If Blender is disconnected, closed, or encounters an error, `GET /state` returns `source: "unavailable"` with detailed error diagnostic information. It **never** fabricates or substitutes cached reference values as live data.
-* **Bounded Socket Timeouts:** All live-state Blender queries run with bounded thread-level timeouts (`BLENDER_TIMEOUT_SECONDS = 3.0`). A non-responsive or stopped Blender instance will never hang the FastAPI server.
-* **Offline Dry-Run Refine (`POST /refine`):** Refinement simulations remain in **dry-run mode only**. It calculates proposed modifier adjustments without touching the 3D scene.
-* **Cached Reference State in Refinement:** Dry-run refinement baseline values are explicitly marked as offline reference values derived from `controlled_test_log.json`. They are clearly distinguished from live Blender reads.
-* **Rejection of Client-Asserted State:** Clients are strictly prohibited from submitting a `current_value` in requests. A client cannot claim or override the 3D model's state. Any request carrying `current_value` is rejected immediately and audited.
-* **Bilateral Symmetry Integrity:** Bilateral features (`eye_size`, `cheekbone_prominence`) explicitly produce both `left` and `right` modifiers and target shape keys. Single-sided changes are never assumed to be automatically symmetric.
-* **Dual Parser Architecture (Rule-Based & Local Ollama AI):** Supports deterministic regex rule-based parsing (default) alongside local neural interpretation via **Ollama (`qwen3:4b`)**.
-* **Zero Cloud Dependency & Local Privacy:** Ollama requests run entirely on the local loopback (`http://127.0.0.1:11434`). No suspect descriptions or biometric data are ever sent to cloud AI services.
-* **Never Trust Model Output (Strict Allowlist Validation):** Model responses are strictly validated against `VERIFIED_ALLOWLIST`. Malformed JSON, unknown feature proposals, invalid directions, or out-of-range magnitudes are immediately rejected.
-* **No Silent Fallback on AI Mode:** When AI mode is requested (`parser_mode="ai"`), errors or Ollama unreachability result in immediate rejection with diagnostic details. The system never silently falls back to the rule-based parser without explicit audit trail.
-* **Audit Logging:** Every incoming refinement request—whether approved or rejected—is logged to SQLite (`refinements.db`) with a UTC timestamp, case ID, parsed feature, proposed delta, parser mode used, and error messages.
-* **Controlled Live Apply (`POST /apply`):** Controlled two-phase application of approved dry-run previews to the Blender `Human` character via the MPFB bridge `set_targets` command.
-  - **Explicit Approval Required:** Requires `confirm_apply: true` and a valid `preview_log_id` with status `PREVIEW_READY`.
-  - **Server-Side Modifier Integrity:** Modifiers are retrieved exclusively from the SQLite audit log; callers cannot inject arbitrary modifiers or values. Every modifier is re-validated against `VERIFIED_ALLOWLIST`.
-  - **Hard Object Locking:** Locked strictly to character name `"Human"`.
-  - **Atomic Replay Protection:** Prevents duplicate or concurrent execution of the same preview via SQLite primary key constraints.
-  - **Pre-Mutation State Drift Check:** Aborts mutation if Blender target values changed since preview creation. Previews without live baseline data (`use_live_state=False`) are safely rejected.
-  - **Immediate Read-Back Verification:** Queries live state post-mutation, verifying target feature values match within `0.001` and all unrelated features remain untouched.
+The system features a **1-Click "Generate & Apply"** workflow with strict pre-mutation state drift checks, server-side allowlist validation, bilateral symmetry preservation, immediate read-back verification, an immutable SQLite chain-of-custody audit trail, and a headless forensic pencil sketch rendering pipeline producing **1024 × 1024 monochrome graphite portraits**.
 
 ---
 
-## 2. Verified Allowlist of 10 Facial Features
+## Table of Contents
 
-All mappings correspond 1-to-1 with MPFB's verified `target.json` catalogue:
-
-| Feature | Display Name | MPFB Section | MPFB Category | Sided | Sides | Range | Step | Cached Reference | Target Shape Keys (Positive / Negative) |
-|---|---|---|---|---|---|---|---|---|---|
-| `nose_width` | nose width | `nose` | `nose-scale-horiz-decr-incr` | No | `unsided` | `[-1.0, 1.0]` | `0.05` | `+0.20` | `nose-scale-horiz-incr` / `nose-scale-horiz-decr` |
-| `nose_height` | nose height | `nose` | `nose-scale-vert-decr-incr` | No | `unsided` | `[-1.0, 1.0]` | `0.05` | `+0.05` | `nose-scale-vert-incr` / `nose-scale-vert-decr` |
-| `chin_width` | chin width | `chin` | `chin-width-decr-incr` | No | `unsided` | `[-1.0, 1.0]` | `0.05` | `-0.10` | `chin-width-incr` / `chin-width-decr` |
-| `chin_prominence` | chin prominence | `chin` | `chin-prominent-decr-incr` | No | `unsided` | `[-1.0, 1.0]` | `0.05` | `+0.10` | `chin-prominent-incr` / `chin-prominent-decr` |
-| `cheekbone_prominence` | cheekbone prominence | `cheek` | `cheek-bones-decr-incr` | Yes | `left`, `right` | `[-1.0, 1.0]` | `0.05` | `+0.15` | `l/r-cheek-bones-incr` / `l/r-cheek-bones-decr` |
-| `eye_size` | eye size | `eyes` | `eye-scale-decr-incr` | Yes | `left`, `right` | `[-1.0, 1.0]` | `0.05` | `+0.10` | `l/r-eye-scale-incr` / `l/r-eye-scale-decr` |
-| `forehead_size` | forehead size | `forehead` | `forehead-scale-vert-decr-incr` | No | `unsided` | `[-1.0, 1.0]` | `0.05` | `0.00` | `forehead-scale-vert-incr` / `forehead-scale-vert-decr` |
-| `head_width` | head width | `head` | `head-scale-horiz-decr-incr` | No | `unsided` | `[-1.0, 1.0]` | `0.05` | `-0.15` | `head-scale-horiz-incr` / `head-scale-horiz-decr` |
-| `head_height` | head height | `head` | `head-scale-vert-decr-incr` | No | `unsided` | `[-1.0, 1.0]` | `0.05` | `+0.10` | `head-scale-vert-incr` / `head-scale-vert-decr` |
-| `mouth_width` | mouth width | `mouth` | `mouth-scale-horiz-decr-incr` | No | `unsided` | `[-1.0, 1.0]` | `0.05` | `-0.05` | `mouth-scale-horiz-incr` / `mouth-scale-horiz-decr` |
-
----
-
-## 3. Windows Setup & Installation
-
-### Prerequisites
-* Python 3.10+ (using the existing virtual environment at `C:\Dept\MPFB MCP\mpfb-mcp\.venv`)
-* Node.js v18+ and npm
-* Local Ollama instance with `qwen3:4b` installed (`ollama pull qwen3:4b`)
-* Windows 10/11 or Windows Server
-
-### Environment Variables & Configuration
-The backend is configurable via environment variables or default settings:
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama HTTP service endpoint |
-| `OLLAMA_MODEL` | `qwen3:4b` | Ollama model identifier |
-| `OLLAMA_TIMEOUT_SECONDS` | `60.0` | Socket timeout for Ollama HTTP requests (adequate for local reasoning models) |
-| `PARSER_MODE` | `rule_based` | Global default parser (`rule_based` or `ai`) |
-| `BLENDER_TIMEOUT_SECONDS` | `3.0` | Socket timeout for MPFB Bridge live target reads |
-
-### Running Backend Tests
-Execute the pytest suite from the project directory:
-
-```powershell
-cd C:\Dept\CrimeSketchAI
-& "C:\Dept\MPFB MCP\mpfb-mcp\.venv\Scripts\pytest.exe" -v
-```
-
-### Running Frontend Tests
-Execute the Vitest suite in the `frontend` directory:
-
-```powershell
-cd C:\Dept\CrimeSketchAI\frontend
-npm test
-```
-
-### Starting the FastAPI Backend Server
-Launch the development server on `http://127.0.0.1:8000`:
-
-```powershell
-cd C:\Dept\CrimeSketchAI
-& "C:\Dept\MPFB MCP\mpfb-mcp\.venv\Scripts\uvicorn.exe" backend.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-Interactive Swagger documentation will be available at:  
-👉 **http://127.0.0.1:8000/docs**
-
-### Starting the React Frontend (Vite)
-In a separate PowerShell window, start the frontend development server:
-
-```powershell
-cd C:\Dept\CrimeSketchAI\frontend
-npm run dev
-```
-
-The user interface will be accessible at:  
-👉 **http://localhost:5173** (or `http://127.0.0.1:5173`)
+1. [Architecture & System Overview](#1-architecture--system-overview)
+2. [Core Forensic Capabilities](#2-core-forensic-capabilities)
+   - [38 Verified Facial Geometry Controls](#38-verified-facial-geometry-controls)
+   - [Hairstyle & Eyebrow Customization](#hairstyle--eyebrow-customization)
+   - [1-Click Generate & Apply Workflow](#1-click-generate--apply-workflow)
+   - [Forensic Pencil Sketch Rendering Pipeline](#forensic-pencil-sketch-rendering-pipeline)
+   - [Chain-of-Custody Audit Trail](#chain-of-custody-audit-trail)
+3. [Prerequisites](#3-prerequisites)
+4. [Step-by-Step Setup Guide](#4-step-by-step-setup-guide)
+   - [Step 1: Install Blender 5.2](#step-1-install-blender-52)
+   - [Step 2: Install & Configure the MPFB Add-on](#step-2-install--configure-the-mpfb-add-on)
+   - [Step 3: Create the 3D Character ("Human")](#step-3-create-the-3d-character-human)
+   - [Step 4: Start the MPFB Socket Bridge](#step-4-start-the-mpfb-socket-bridge)
+   - [Step 5: Setup Local Ollama AI](#step-5-setup-local-ollama-ai)
+   - [Step 6: Setup & Run FastAPI Backend](#step-6-setup--run-fastapi-backend)
+   - [Step 7: Setup & Run React Frontend](#step-7-setup--run-react-frontend)
+5. [Witness Prompting Guide & Examples](#5-witness-prompting-guide--examples)
+6. [REST API Reference](#6-rest-api-reference)
+7. [Safety & Forensic Integrity Protocol](#7-safety--forensic-integrity-protocol)
+8. [Automated Test Suites](#8-automated-test-suites)
+9. [Troubleshooting & FAQs](#9-troubleshooting--faqs)
 
 ---
 
-## 4. API Endpoints & Example Requests
+## 1. Architecture & System Overview
 
-### A. Health Check (`GET /health`)
-Verifies service health, database connectivity, and active allowlist count.
+CrimeSketchAI operates as a three-tier local architecture ensuring **100% data privacy** (no facial data or testimony leaves the forensic workstation).
 
-**PowerShell:**
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -Method Get
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            WITNESS INTERVIEW                                │
+│          "A suspect with an afro, prominent cheekbones, and a wide jaw"     │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│            REACT 18 + TYPESCRIPT STUDIO FRONTEND (Port 5173)                │
+│  • Obsidian / Slate Dark Theme (WCAG 2.1 AA Compliant)                      │
+│  • Segmented Reference & Parser Toggles (Live Bridge vs. Cached Baseline)   │
+│  • Real-Time Target Delta Diff & Read-Back Verification Display             │
+│  • Interactive 1024×1024 Forensic Pencil Sketch Viewer & Downloader         │
+│  • Searchable Forensic Audit Trail (SQLite Chain of Custody)                │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │ HTTP REST JSON
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                 FASTAPI REFINEMENT BACKEND (Port 8000)                      │
+│  • POST /refine : Dry-run semantic/rule parsing and delta computation       │
+│  • POST /apply  : Anti-drift check, allowlist validation, socket execution   │
+│  • POST /render-sketch : Staging, Workbench cavity render, graphite filter  │
+│  • GET  /state  : Read-only live morph target stack inspection              │
+│  • GET  /logs   : SQLite audit query filterable by Case ID                  │
+└───────────────────┬─────────────────────────────────────┬───────────────────┘
+                    │                                     │
+         HTTP (127.0.0.1:11434)             Raw TCP Socket (127.0.0.1:9877)
+                    ▼                                     ▼
+┌───────────────────────────────────┐ ┌───────────────────────────────────────┐
+│     LOCAL OLLAMA AI PARSER        │ │    BLENDER 5.2 + MPFB BRIDGE SERVER   │
+│  • Model: Qwen3:4B                │ │  • Active Scene Object: "Human"       │
+│  • Context-aware semantic parsing │ │  • JSON-RPC Socket Server (Port 9877) │
+│  • Strict JSON Schema validation  │ │  • 38 Target Controls + Asset Library │
+│  • Zero cloud data leakage        │ │  • Workbench Engine (Cavity Shading)  │
+└───────────────────────────────────┘ └───────────────────────────────────────┘
 ```
 
-**Example Response:**
+---
+
+## 2. Core Forensic Capabilities
+
+### 38 Verified Facial Geometry Controls
+
+Every facial control corresponds 1-to-1 with a verified entry in MPFB's underlying `target.json` catalog. Bounded within `[-1.0, 1.0]` with default `±0.05` steps:
+
+| Anatomical Region | Feature Identifier | Sided | Target Shape Keys (Positive / Negative) |
+|---|---|---|---|
+| **Mouth & Lips** | `mouth_width` | No | `mouth-scale-horiz-incr` / `mouth-scale-horiz-decr` |
+| | `mouth_height` | No | `mouth-scale-vert-incr` / `mouth-scale-vert-decr` |
+| | `mouth_upperlip_volume` | No | `mouth-upperlip-volume-incr` / `mouth-upperlip-volume-decr` |
+| | `mouth_lowerlip_volume` | No | `mouth-lowerlip-volume-incr` / `mouth-lowerlip-volume-decr` |
+| | `mouth_cupids_bow` | No | `mouth-cupidsbow-incr` / `mouth-cupidsbow-decr` |
+| | `philtrum_depth` | No | `mouth-philtrum-volume-incr` / `mouth-philtrum-volume-decr` |
+| | `laugh_lines` | No | `mouth-laugh-lines-out` / `mouth-laugh-lines-in` |
+| | `dimples` | No | `mouth-dimples-out` / `mouth-dimples-in` |
+| | `mouth_corner_turn` | No | `mouth-angles-up` / `mouth-angles-down` |
+| **Nose** | `nose_width` | No | `nose-scale-horiz-incr` / `nose-scale-horiz-decr` |
+| | `nose_height` | No | `nose-scale-vert-incr` / `nose-scale-vert-decr` |
+| | `nasal_bridge_hump` | No | `nose-hump-incr` / `nose-hump-decr` |
+| | `nasal_bridge_curve` | No | `nose-curve-convex` / `nose-curve-concave` |
+| | `nostril_width` | No | `nose-nostrils-width-incr` / `nose-nostrils-width-decr` |
+| | `nose_tip_width` | No | `nose-point-width-incr` / `nose-point-width-decr` |
+| | `nose_tip_angle` | No | `nose-point-up` / `nose-point-down` |
+| | `septum_angle` | No | `nose-septumangle-decr` / `nose-septumangle-incr` |
+| **Eyes & Eyelids** | `eye_size` | Yes (L/R) | `l/r-eye-scale-incr` / `l/r-eye-scale-decr` |
+| | `eye_spacing` | No | `eyes-spacing-incr` / `eyes-spacing-decr` |
+| | `eye_slant` | Yes (L/R) | `l/r-eye-angles-up` / `l/r-eye-angles-down` |
+| | `eyelid_upper_fold` | Yes (L/R) | `l/r-eye-upperlid-fold-in` / `l/r-eye-upperlid-fold-out` |
+| | `eyelid_lower_hooded`| Yes (L/R) | `l/r-eye-lowerlid-fold-in` / `l/r-eye-lowerlid-fold-out` |
+| | `eye_bag_depth` | Yes (L/R) | `l/r-eye-bag-incr` / `l/r-eye-bag-decr` |
+| **Chin & Jaw** | `chin_width` | No | `chin-width-incr` / `chin-width-decr` |
+| | `chin_prominence` | No | `chin-prominent-incr` / `chin-prominent-decr` |
+| | `chin_height` | No | `chin-scale-vert-incr` / `chin-scale-vert-decr` |
+| | `chin_cleft` | No | `chin-cleft-incr` / `chin-cleft-decr` |
+| | `jaw_width` | No | `jaw-width-incr` / `jaw-width-decr` |
+| | `jaw_angle` | No | `jaw-angle-up` / `jaw-angle-down` |
+| | `jaw_squareness` | No | `jaw-square-incr` / `jaw-square-decr` |
+| | `double_chin` | No | `chin-doublechin-incr` / `chin-doublechin-decr` |
+| **Cheeks & Temples**| `cheekbone_prominence`| Yes (L/R) | `l/r-cheek-bones-incr` / `l/r-cheek-bones-decr` |
+| | `cheek_fullness` | Yes (L/R) | `l/r-cheek-volume-incr` / `l/r-cheek-volume-decr` |
+| | `temple_depth` | Yes (L/R) | `l/r-temple-in` / `l/r-temple-out` |
+| **Ears** | `ear_protrusion` | Yes (L/R) | `l/r-ear-rot-incr` / `l/r-ear-rot-decr` |
+| | `earlobe_size` | Yes (L/R) | `l/r-ear-lobe-scale-incr` / `l/r-ear-lobe-scale-decr` |
+| **Forehead & Head** | `forehead_size` | No | `forehead-scale-vert-incr` / `forehead-scale-vert-decr` |
+| | `forehead_slope` | No | `forehead-slope-forward` / `forehead-slope-backward` |
+| | `head_width` | No | `head-scale-horiz-incr` / `head-scale-horiz-decr` |
+| | `head_height` | No | `head-scale-vert-incr` / `head-scale-vert-decr` |
+
+---
+
+### Hairstyle & Eyebrow Customization
+
+Witnesses frequently recall distinctive hair and eyebrow profiles. CrimeSketchAI includes verified asset libraries loaded via MPFB asset equip calls:
+
+* **Hairstyles**:
+  * `afro01` (Afro / natural textured curls)
+  * `bob01` / `bob02` (Short & medium bob cuts)
+  * `braid01` (Braided hair)
+  * `long01` (Long straight hair)
+  * `ponytail01` (Tied back ponytail)
+  * `short01` through `short04` (Neat cropped, side-part, and layered cuts)
+  * `bald` (Clean removal of existing hair assets)
+* **Eyebrows**:
+  * `eyebrow001` through `eyebrow012` (Thin, thick, arched, flat, curved, and bushier variants)
+
+---
+
+### 1-Click Generate & Apply Workflow
+
+Rather than requiring the investigator to navigate multiple preview and confirmation screens, CrimeSketchAI provides a seamless **1-Click "Generate & Apply"** button:
+1. **Semantic / Rule Parsing**: Converts input text into target deltas.
+2. **Pre-Mutation State Drift Check**: Queries Blender port 9877 to verify the character's active target values match the baseline.
+3. **Atomic Socket Mutation**: Dispatches `set_targets` JSON-RPC over the bridge to mutate the 3D character `Human`.
+4. **Immediate Read-Back Verification**: Reads back target values from Blender, verifying that proposed features match within `±0.001` tolerance and unrelated features were unaffected.
+5. **UI Update**: Renders the comparison diff table, status pills, and marks the SQLite audit record as `APPLIED`.
+
+---
+
+### Forensic Pencil Sketch Rendering Pipeline
+
+Renders an authentic, monochrome forensic pencil-sketch portrait from the live 3D character in Blender:
+1. **Camera Staging**: Positions an 85mm focal-length portrait lens framed directly at the character's facial bounding volume.
+2. **Cavity Shading**: Renders via Blender's Workbench engine with dual-pass cavity shading (ridges and valleys) to capture fine anatomical contours.
+3. **Graphite Post-Processing**:
+   - Inverts the raw image and applies a Gaussian blur mask ($r=5$).
+   - Computes a mathematical color dodge line art layer: $\text{Dodge} = \text{clip}\left(\frac{\text{Raw} \times 255}{255 - \text{Blur}}, 0, 255\right)$.
+   - Blends line art ($65\%$) with soft tonal shading ($35\%$) to preserve 3D volume.
+   - Enforces a pure `#FFFFFF` forensic background mask.
+   - Applies $1.15\times$ contrast boost simulating 2B/4B forensic graphite pencils.
+4. **Output**: Generates a standard $1024 \times 1024$ PNG image saved in `sketches/` and displayed directly in the UI.
+
+---
+
+### Chain-of-Custody Audit Trail
+
+Forensic software must provide reproducible audit trails for legal admissibility. Every request is stored in SQLite (`refinements.db`):
+* Incremental log ID and UTC timestamp
+* Forensic Case Identifier (e.g., `CASE-2026-001`)
+* Raw eyewitness input text
+* Parser mode (`ai` vs `rule_based`) and Ollama model (`qwen3:4b`)
+* Target modifier details, pre-values, deltas, and post-values
+* Verification status (`PASSED (±0.001)` vs `FAILED`)
+
+---
+
+## 3. Prerequisites
+
+* **Operating System**: Windows 10/11 (PowerShell 5.1 or PowerShell 7)
+* **Blender**: Version **5.2** (or 4.2+) installed at `C:\Program Files\Blender Foundation\Blender 5.2\blender.exe`
+* **MPFB Add-on**: **MPFB2** (MakeHuman Plugin for Blender v2.0.2+)
+* **Python**: Version **3.10** or higher
+* **Node.js**: Version **v18+** and npm
+* **Ollama**: Local instance with `qwen3:4b` model installed
+
+---
+
+## 4. Step-by-Step Setup Guide
+
+### Step 1: Install Blender 5.2
+
+1. Download Blender 5.2 from the official website: [https://www.blender.org/download/](https://www.blender.org/download/)
+2. Run the installer and install to the default location:
+   ```text
+   C:\Program Files\Blender Foundation\Blender 5.2\
+   ```
+3. Launch Blender once to complete initial preferences initialization, then close it.
+
+---
+
+### Step 2: Install & Configure the MPFB Add-on
+
+1. Download the latest **MPFB2** add-on zip (`mpfb2.zip`) from [http://mpfb.net](http://mpfb.net) or [https://github.com/makehumancommunity/mpfb2](https://github.com/makehumancommunity/mpfb2).
+2. Open Blender 5.2.
+3. In the top menu, go to **Edit** → **Preferences** → **Add-ons**.
+4. Click the **Install...** (or arrow icon in top right) and select the downloaded `mpfb2.zip` file.
+5. In the add-on search bar, type `MPFB` and check the box to **enable** **MakeHuman Plugin for Blender (MPFB)**.
+6. **Download MPFB System Assets**:
+   - In the Blender 3D Viewport, press `N` to open the right sidebar.
+   - Click on the **MPFB** tab.
+   - Expand the **Operations** / **Assets** section.
+   - Click **Download system assets** (downloads base body meshes, targets, and clothes/hair).
+
+---
+
+### Step 3: Create the 3D Character ("Human")
+
+CrimeSketchAI enforces hard object-name safety locking to prevent accidental corruption of other scene objects. The target character must be named **`Human`**.
+
+1. In Blender, in the 3D Viewport sidebar under **MPFB** tab:
+   - Click **Create human** → **New human**.
+   - Choose a baseline human (e.g. *Generic neutral adult human*).
+   - Click **Create**.
+2. In the top-right **Outliner** panel:
+   - Locate the generated human mesh object.
+   - Double-click the object and rename it to exactly:
+     ```text
+     Human
+     ```
+   *(Note: Ensure the active mesh object name is `Human`, capitalized exactly as shown).*
+3. Save your Blender project file for easy reload (e.g., `C:\Dept\CrimeSketchAI\workspace.blend`).
+
+---
+
+### Step 4: Start the MPFB Socket Bridge
+
+The MPFB Socket Bridge allows CrimeSketchAI's backend to communicate with Blender over a local JSON-RPC socket.
+
+1. In the Blender 3D Viewport sidebar (`N` panel), select the **MPFB** tab.
+2. Scroll to the **Developer** or **Socket Server** section.
+3. Configure the bridge settings:
+   - **Host**: `127.0.0.1`
+   - **Port**: `9877`
+4. Click the button:
+   ```text
+   [ Start MPFB Bridge ]
+   ```
+5. You should see a confirmation notification in Blender:
+   ```text
+   Socket server started on 127.0.0.1:9877
+   ```
+> **Important:** Keep Blender open in the background with the bridge running while using CrimeSketchAI.
+
+---
+
+### Step 5: Setup Local Ollama AI
+
+1. Download and install Ollama from [https://ollama.com/download/windows](https://ollama.com/download/windows).
+2. Open a PowerShell terminal and pull the Qwen 3 4B parameter model:
+   ```powershell
+   ollama pull qwen3:4b
+   ```
+3. Verify that Ollama is serving requests on `http://127.0.0.1:11434`:
+   ```powershell
+   curl http://127.0.0.1:11434/api/tags
+   ```
+   *(You should see `qwen3:4b` in the returned JSON list).*
+
+---
+
+### Step 6: Setup & Run FastAPI Backend
+
+1. Open PowerShell and navigate to the `CrimeSketchAI` project root:
+   ```powershell
+   cd C:\Dept\CrimeSketchAI
+   ```
+2. Create and activate a Python virtual environment:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+3. Install backend dependencies:
+   ```powershell
+   pip install -r requirements.txt
+   ```
+4. Verify backend configuration in `backend/config.py` (or create a `.env` file):
+   ```ini
+   OLLAMA_BASE_URL=http://127.0.0.1:11434
+   OLLAMA_MODEL=qwen3:4b
+   OLLAMA_TIMEOUT_SECONDS=180.0
+   MPFB_BRIDGE_HOST=127.0.0.1
+   MPFB_BRIDGE_PORT=9877
+   BLENDER_TIMEOUT_SECONDS=3.0
+   ```
+5. Start the FastAPI Uvicorn server:
+   ```powershell
+   uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+   ```
+6. Verify backend health in your browser or curl:
+   ```text
+   http://127.0.0.1:8000/health
+   ```
+   Interactive Swagger docs are available at:
+   ```text
+   http://127.0.0.1:8000/docs
+   ```
+
+---
+
+### Step 7: Setup & Run React Frontend
+
+1. Open a new PowerShell terminal and navigate to the `frontend` folder:
+   ```powershell
+   cd C:\Dept\CrimeSketchAI\frontend
+   ```
+2. Install npm dependencies:
+   ```powershell
+   npm install
+   ```
+3. Start the Vite development server:
+   ```powershell
+   npm run dev
+   ```
+4. Open your browser and navigate to:
+   ```text
+   http://localhost:5173
+   ```
+5. Confirm that the top status pills show:
+   - **Backend API**: `Online (v0.1.0)`
+   - **Blender 5.2 Bridge**: `Connected (Human)`
+
+---
+
+## 5. Witness Prompting Guide & Examples
+
+CrimeSketchAI accepts natural-language witness observations in plain English.
+
+### Single-Feature Commands
+* *"Make the nose slightly wider."*
+* *"Increase the chin prominence slightly."*
+* *"Make the cheekbones more prominent."*
+* *"Make the eyes slightly larger."*
+* *"Add a prominent dorsal hump to the nose."*
+* *"Make the lips fuller with a defined cupid's bow."*
+
+### Multi-Feature Witness Descriptions
+* *"A person with a broad nose, prominent cheekbones, a slightly pointed chin, small eyes, and a narrow face."*
+* *"Suspect has hooded eyelids with bags under their eyes, thin lips, and a square jaw."*
+* *"Make the head narrower, the forehead taller, and give them protruding ears."*
+
+### Hairstyle & Eyebrow Styling
+* *"A suspect with an afro and a wide jaw."*
+* *"Change the hairstyle to a bob cut and thin curved eyebrows."*
+* *"Make the suspect bald with bushy eyebrows."*
+* *"A person with a neat side-parted haircut, thin arched eyebrows, and high cheekbones."*
+
+---
+
+## 6. REST API Reference
+
+### `GET /health`
+Returns connection status across the database, Blender socket bridge, and Ollama service.
 ```json
 {
   "status": "healthy",
   "app_name": "CrimeSketchAI Refinement Backend",
   "version": "0.1.0",
-  "allowlist_count": 10,
-  "allowlist_features": [
-    "nose_width", "nose_height", "chin_width", "chin_prominence",
-    "cheekbone_prominence", "eye_size", "forehead_size",
-    "head_width", "head_height", "mouth_width"
-  ],
-  "mode": "dry_run",
-  "data_source_mode": "offline_cached_reference",
+  "allowlist_count": 38,
+  "data_source_mode": "live_blender",
   "database_connected": true,
-  "parser_mode": "rule_based",
-  "ollama_model": "qwen3:4b",
-  "ollama_available": true
+  "ollama_available": true,
+  "ollama_model": "qwen3:4b"
 }
 ```
 
----
+### `GET /state?character_name=Human`
+Queries active morph targets directly from Blender over port 9877 without mutating state.
 
-### B. Live Model Target State (`GET /state`)
-Retrieves the real-time target stack from the live Blender `Human` model via the verified MPFB-MCP bridge (`get_target_stack`).
-
-* **Query Parameters:** `character_name` (optional, default `"Human"`).
-* **Guarantees:**
-  - Strictly read-only; **never** alters the 3D scene or invokes mutating tools.
-  - Zero-fallback policy: if Blender is closed, unreachable, or returns an error, the endpoint responds with `source: "unavailable"` and explicit error details. Cached values are **never** substituted as live data.
-  - Non-blocking socket timeout: bounded by `BLENDER_TIMEOUT_SECONDS` (default: 3.0s).
-
-#### Example 1: Successful Live Blender Inspection
-**PowerShell:**
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/state?character_name=Human" -Method Get
-```
-
-**Response (`source: "live_blender"`):**
-```json
-{
-  "connection_available": true,
-  "character_name": "Human",
-  "source": "live_blender",
-  "timestamp_utc": "2026-10-28T12:30:00.000000Z",
-  "error_details": null,
-  "features": {
-    "nose_width": {
-      "feature_id": "nose_width",
-      "display_name": "nose width",
-      "value": 0.20,
-      "left_value": null,
-      "right_value": null,
-      "is_symmetric": true,
-      "target_identifiers": [
-        "nose:nose-scale-horiz-decr-incr:unsided"
-      ]
-    },
-    "cheekbone_prominence": {
-      "feature_id": "cheekbone_prominence",
-      "display_name": "cheekbone prominence",
-      "value": 0.15,
-      "left_value": 0.15,
-      "right_value": 0.15,
-      "is_symmetric": true,
-      "target_identifiers": [
-        "cheek:cheek-bones-decr-incr:left",
-        "cheek:cheek-bones-decr-incr:right"
-      ]
-    },
-    "chin_prominence": {
-      "feature_id": "chin_prominence",
-      "display_name": "chin prominence",
-      "value": 0.10,
-      "left_value": null,
-      "right_value": null,
-      "is_symmetric": true,
-      "target_identifiers": [
-        "chin:chin-prominent-decr-incr:unsided"
-      ]
-    }
-  }
-}
-```
-
-#### Example 2: Blender Bridge Closed or Unreachable
-When the bridge port `9877` is closed or Blender is not running, the endpoint cleanly reports the unavailability:
-
-**Response (`source: "unavailable"`):**
-```json
-{
-  "connection_available": false,
-  "character_name": "Human",
-  "source": "unavailable",
-  "timestamp_utc": "2026-10-28T12:30:00.000000Z",
-  "error_details": "Cannot connect to MPFB bridge at 127.0.0.1:9877. Ensure Blender is running and MPFB Bridge server is active.",
-  "features": null
-}
-```
-
----
-
-### C. List Allowlisted Features (`GET /features`)
-Returns definitions, boundaries, and cached reference values for all 10 features.
-
-**PowerShell:**
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/features" -Method Get
-```
-
----
-
-### D. Dry-Run Refine (`POST /refine`)
-Parses a natural-language refinement command and generates a dry-run modifier adjustment preview.
-
-* **State Modes:**
-  - `use_live_state: false` *(default)*: Uses offline verified reference baselines. Fully offline; does not poll Blender.
-  - `use_live_state: true`: Reads live target stack from Blender (`BlenderStateService`). Computes adjustment deltas against the live 3D model.
-* **Parser Modes:**
-  - `parser_mode: "rule_based"` *(default)*: Deterministic regular expression parser matching explicit keywords.
-  - `parser_mode: "ai"`: Local neural parsing via Ollama (`qwen3:4b`). Interprets conversational prompts into structured JSON, validated strictly against the 10 allowlisted features. Rejects malformed JSON, out-of-scope modifications, or unreachable Ollama instances without silent fallback.
-* **Guarantees:**
-  - **Zero mutation:** Never modifies the 3D scene or invokes `mpfb_set_targets`.
-  - **Zero silent fallback:** If `use_live_state: true` and Blender is unavailable or returns an error, the request is rejected with `status: "REJECTED"`. Cached reference values are **never** substituted for live data.
-  - **Bilateral asymmetry preservation:** Bilateral features read both left and right values, calculate adjustments independently, preserve existing asymmetry differences, and enforce individual boundary clamping.
-  - **Client-asserted state forbidden:** Any caller-supplied `current_value` is rejected immediately.
-
-#### Example 1: Cached Reference Mode (`use_live_state: false`)
-**PowerShell:**
-```powershell
-$body = @{
-    text = "Make the nose slightly wider."
-    case_id = "CASE-2026-001"
-    character_name = "Human"
-    use_live_state = $false
-} | ConvertTo-Json
-
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/refine" -Method Post -Body $body -ContentType "application/json"
-```
-
-**Response (`PREVIEW_READY`):**
-```json
-{
-  "status": "PREVIEW_READY",
-  "mode": "dry_run",
-  "case_id": "CASE-2026-001",
-  "input_text": "Make the nose slightly wider.",
-  "feature_id": "nose_width",
-  "display_name": "nose width",
-  "reference_value": 0.20,
-  "current_value": 0.20,
-  "value_source": "cached_reference",
-  "is_live_blender_value": false,
-  "reference_note": "Value is an offline cached reference value from the verified baseline; this is NOT a live Blender socket read.",
-  "adjustment_delta": 0.05,
-  "proposed_delta": 0.05,
-  "proposed_value": 0.25,
-  "is_boundary_clamped": false,
-  "boundary_warning": null,
-  "target_identifier": "nose:nose-scale-horiz-decr-incr:unsided",
-  "target_identifiers": [
-    "nose:nose-scale-horiz-decr-incr:unsided"
-  ],
-  "target_shapekeys": [
-    "nose-scale-horiz-incr"
-  ],
-  "proposed_payload": {
-    "name": "Human",
-    "modifiers": [
-      {
-        "section": "nose",
-        "category": "nose-scale-horiz-decr-incr",
-        "side": "unsided",
-        "value": 0.25
-      }
-    ],
-    "symmetry": false,
-    "prune": true,
-    "refit": false
-  },
-  "message": "Dry-run preview: nose width will be increased by +0.05 from cached reference +0.20 to proposed +0.25 across target(s) [nose:nose-scale-horiz-decr-incr:unsided] on character 'Human'. (Note: Uses offline cached reference value, NOT a live Blender read).",
-  "error_message": null,
-  "log_id": 1
-}
-```
-
-#### Example 2: Live Blender Mode (`use_live_state: true`)
-When Blender currently holds `nose-scale-horiz-decr-incr = +0.20`:
-
-**PowerShell:**
-```powershell
-$body = @{
-    text = "Make the nose slightly wider."
-    case_id = "CASE-LIVE-001"
-    character_name = "Human"
-    use_live_state = $true
-} | ConvertTo-Json
-
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/refine" -Method Post -Body $body -ContentType "application/json"
-```
-
-**Response (`PREVIEW_READY`):**
-```json
-{
-  "status": "PREVIEW_READY",
-  "mode": "dry_run",
-  "case_id": "CASE-LIVE-001",
-  "input_text": "Make the nose slightly wider.",
-  "feature_id": "nose_width",
-  "display_name": "nose width",
-  "reference_value": 0.20,
-  "current_value": 0.20,
-  "value_source": "live_blender",
-  "is_live_blender_value": true,
-  "reference_note": "Observed from live Blender model 'Human' target stack; NOT cached reference.",
-  "adjustment_delta": 0.05,
-  "proposed_delta": 0.05,
-  "proposed_value": 0.25,
-  "is_boundary_clamped": false,
-  "boundary_warning": null,
-  "target_identifier": "nose:nose-scale-horiz-decr-incr:unsided",
-  "target_identifiers": [
-    "nose:nose-scale-horiz-decr-incr:unsided"
-  ],
-  "target_shapekeys": [
-    "nose-scale-horiz-incr"
-  ],
-  "proposed_payload": {
-    "name": "Human",
-    "modifiers": [
-      {
-        "section": "nose",
-        "category": "nose-scale-horiz-decr-incr",
-        "side": "unsided",
-        "value": 0.25
-      }
-    ],
-    "symmetry": false,
-    "prune": true,
-    "refit": false
-  },
-  "message": "Live dry-run preview: nose width will be increased by +0.05 from live Blender value +0.20 to proposed +0.25 across target(s) [nose:nose-scale-horiz-decr-incr:unsided] on character 'Human'. (Data source: live Blender target stack)."
-}
-```
-
-#### Example 3: Bilateral Live Refinement with Preserved Asymmetry
-If the character's cheekbones have an asymmetric sculpt (Left = 0.10, Right = 0.25):
-
-**PowerShell:**
-```powershell
-$body = @{
-    text = "Make the cheekbones more prominent."
-    case_id = "CASE-ASYM-001"
-    use_live_state = $true
-} | ConvertTo-Json
-
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/refine" -Method Post -Body $body -ContentType "application/json"
-```
-
-**Response (`PREVIEW_READY` with Asymmetry Preserved):**
-```json
-{
-  "status": "PREVIEW_READY",
-  "feature_id": "cheekbone_prominence",
-  "value_source": "live_blender",
-  "is_live_blender_value": true,
-  "left_current_value": 0.10,
-  "right_current_value": 0.25,
-  "left_proposed_value": 0.15,
-  "right_proposed_value": 0.30,
-  "is_symmetric": false,
-  "proposed_payload": {
-    "name": "Human",
-    "modifiers": [
-      {
-        "section": "cheek",
-        "category": "cheek-bones-decr-incr",
-        "side": "left",
-        "value": 0.15
-      },
-      {
-        "section": "cheek",
-        "category": "cheek-bones-decr-incr",
-        "side": "right",
-        "value": 0.30
-      }
-    ]
-  },
-  "message": "Live dry-run preview: cheekbone prominence will be increased by +0.05 from live Blender asymmetric values (left: +0.10, right: +0.25, diff: +0.15) to proposed (left: +0.15, right: +0.30) across target(s) [cheek:cheek-bones-decr-incr:left, cheek:cheek-bones-decr-incr:right] on character 'Human'. Preserved bilateral asymmetry."
-}
-```
-
-#### Example 4: Rejection When Live Blender State Is Unavailable (Zero Fallback)
-When `use_live_state: true` and the bridge port `9877` is closed:
-
-**Response (`REJECTED`):**
-```json
-{
-  "status": "REJECTED",
-  "mode": "dry_run",
-  "case_id": "CASE-FAIL-001",
-  "input_text": "Make the nose slightly wider.",
-  "value_source": "unavailable",
-  "is_live_blender_value": false,
-  "reference_note": "Live Blender state read failed; cached reference values were NOT substituted.",
-  "message": "Refinement rejected: Live Blender state unavailable: Cannot connect to MPFB Bridge at 127.0.0.1:9877. Preview rejected because use_live_state=True and live state cannot be verified.",
-  "error_message": "Live Blender state unavailable: Cannot connect to MPFB Bridge at 127.0.0.1:9877. Preview rejected because use_live_state=True and live state cannot be verified."
-}
-```
-
-#### Example 5: Rejection of Client-Supplied `current_value`
-**Request:**
+### `POST /refine`
+Performs dry-run semantic interpretation. Returns proposed modifiers, target shape keys, and delta values.
 ```json
 {
   "text": "Make the nose slightly wider.",
-  "case_id": "CASE-2026-003",
-  "current_value": 0.95
-}
-```
-
-**Response (`REJECTED`):**
-```json
-{
-  "status": "REJECTED",
-  "mode": "dry_run",
-  "case_id": "CASE-2026-003",
-  "input_text": "Make the nose slightly wider.",
-  "message": "Refinement rejected: Caller-supplied 'current_value' is rejected. Clients cannot assert or override 3D model state. All dry-run calculations strictly use verified cached reference values or live Blender state via use_live_state=True.",
-  "error_message": "Caller-supplied 'current_value' is rejected. Clients cannot assert or override 3D model state. All dry-run calculations strictly use verified cached reference values or live Blender state via use_live_state=True.",
-  "log_id": 3
-}
-```
-
-#### Example 6: Refinement via Local Ollama AI Parser (`parser_mode: "ai"`)
-Natural-language instruction interpreted locally using Ollama (`qwen3:4b`):
-
-**PowerShell:**
-```powershell
-$body = @{
-    text = "Could you give him a noticeably wider nose?"
-    case_id = "CASE-AI-001"
-    character_name = "Human"
-    parser_mode = "ai"
-} | ConvertTo-Json
-
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/refine" -Method Post -Body $body -ContentType "application/json"
-```
-
-**Response (`PREVIEW_READY`):**
-```json
-{
-  "status": "PREVIEW_READY",
-  "mode": "dry_run",
-  "case_id": "CASE-AI-001",
-  "input_text": "Could you give him a noticeably wider nose?",
-  "feature_id": "nose_width",
-  "display_name": "nose width",
-  "reference_value": 0.20,
-  "current_value": 0.20,
-  "value_source": "cached_reference",
-  "is_live_blender_value": false,
-  "adjustment_delta": 0.08,
-  "proposed_delta": 0.08,
-  "proposed_value": 0.28,
-  "is_boundary_clamped": false,
-  "boundary_warning": null,
-  "target_identifier": "nose:nose-scale-horiz-decr-incr:unsided",
-  "target_identifiers": [
-    "nose:nose-scale-horiz-decr-incr:unsided"
-  ],
-  "target_shapekeys": [
-    "nose-scale-horiz-incr"
-  ],
-  "parser_mode": "ai",
-  "parser_model": "qwen3:4b",
-  "proposed_payload": {
-    "name": "Human",
-    "modifiers": [
-      {
-        "section": "nose",
-        "category": "nose-scale-horiz-decr-incr",
-        "side": "unsided",
-        "value": 0.28
-      }
-    ],
-    "symmetry": false,
-    "prune": true,
-    "refit": false
-  },
-  "message": "Dry-run preview: nose width will be increased by +0.08 from cached reference +0.20 to proposed +0.28 across target(s) [nose:nose-scale-horiz-decr-incr:unsided] on character 'Human'. (Note: Uses offline cached reference value, NOT a live Blender read).",
-  "log_id": 4
-}
-```
-
-#### Example 7: AI Rejection When Ollama Unreachable (Zero Silent Fallback)
-When `parser_mode: "ai"` is requested but Ollama is offline or unresponsive, the request is rejected immediately with an explicit audit log and diagnostic error message:
-
-**Response (`REJECTED`):**
-```json
-{
-  "status": "REJECTED",
-  "mode": "dry_run",
-  "case_id": "CASE-AI-ERR-001",
-  "input_text": "Make the chin wider.",
-  "parser_mode": "ai",
-  "parser_model": "qwen3:4b",
-  "message": "Refinement rejected: AI parser error: Cannot connect to Ollama at http://127.0.0.1:11434. Ensure Ollama service is running.",
-  "error_message": "AI parser error: Cannot connect to Ollama at http://127.0.0.1:11434. Ensure Ollama service is running.",
-  "log_id": 5
-}
-```
-
----
-
-### E. Audit Logs (`GET /logs`)
-Retrieves SQLite records of all refinement requests and rejections.
-
-**PowerShell:**
-```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/logs?case_id=CASE-2026-001" -Method Get
-```
-
----
-
-### F. Live Refinement Apply (`POST /apply`)
-Applies a previously validated and recorded dry-run preview (`PREVIEW_READY`) to the live Blender character named `Human` using the verified MPFB bridge `set_targets` command.
-
-* **Safety Checks Enforced Before Mutation:**
-  1. Character object locked strictly to `"Human"`.
-  2. Explicit user confirmation required (`confirm_apply: true`).
-  3. Preview audit record must exist and have status `PREVIEW_READY`.
-  4. Preview must have been generated in live mode (`use_live_state=True`) with captured baseline metrics. Previews from offline cached mode are rejected.
-  5. Atomic replay protection check ensures the preview has not already been claimed or applied.
-  6. Server-side modifier retrieval: Modifiers are loaded exclusively from SQLite audit details, never accepted from caller payload.
-  7. Modifiers re-validated against `VERIFIED_ALLOWLIST` (bounds `[-1.0, 1.0]`, allowed sides, valid category).
-  8. Pre-mutation state drift verification: Live Blender target values are read immediately before mutation. If the target feature or any unrelated allowlisted feature has changed since preview creation, the operation is aborted.
-* **Bridge Execution:**
-  - Invokes `set_targets` with `name="Human"`, `symmetry=False`, `prune=True`, `refit=False`.
-  - For bilateral asymmetric features, applies left and right target sliders independently without overwriting the opposite side.
-* **Post-Mutation Read-Back Verification:**
-  - Live target stack is re-read from Blender immediately after mutation.
-  - Verifies target feature values match expected proposed values within `0.001`.
-  - Verifies all other allowlisted features remained unchanged within `0.001`.
-  - If read-back fails, status is marked `APPLY_FAILED` and audited.
-
-#### Example 1: Successful Apply Request
-**PowerShell:**
-```powershell
-$body = @{
-    preview_log_id = 1
-    case_id = "CASE-LIVE-001"
-    character_name = "Human"
-    confirm_apply = $true
-} | ConvertTo-Json
-
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/apply" -Method Post -Body $body -ContentType "application/json"
-```
-
-**Response (`APPLIED`):**
-```json
-{
-  "status": "APPLIED",
-  "apply_log_id": 2,
-  "preview_log_id": 1,
-  "case_id": "CASE-LIVE-001",
+  "case_id": "CASE-2026-001",
   "character_name": "Human",
-  "feature_id": "nose_width",
-  "display_name": "nose width",
-  "previous_value": 0.20,
-  "applied_value": 0.25,
-  "left_previous_value": null,
-  "right_previous_value": null,
-  "left_applied_value": null,
-  "right_applied_value": null,
-  "verified": true,
-  "drift_checked": true,
-  "modifiers_applied": [
-    {
-      "section": "nose",
-      "category": "nose-scale-horiz-decr-incr",
-      "side": "unsided",
-      "value": 0.25
-    }
-  ],
-  "message": "Successfully applied and verified changes to nose width on character 'Human' in Blender. Read-back confirmed target values and confirmed all unrelated features remained unchanged.",
-  "error_message": null
+  "parser_mode": "ai",
+  "use_live_state": true
 }
 ```
 
-#### Example 2: Replay Protection Rejection
-If a client attempts to apply the same `preview_log_id` a second time:
-
-**Response (`APPLY_FAILED`):**
+### `POST /apply`
+Applies an approved dry-run preview directly to the Blender `Human` character. Performs pre-mutation drift checks and post-mutation read-back verification.
 ```json
 {
-  "status": "APPLY_FAILED",
-  "apply_log_id": 3,
-  "preview_log_id": 1,
-  "case_id": "CASE-LIVE-001",
+  "preview_log_id": 42,
+  "case_id": "CASE-2026-001",
   "character_name": "Human",
-  "verified": false,
-  "drift_checked": false,
-  "message": "Refinement application rejected: Application rejected: Preview #1 has already been claimed or applied (status: APPLIED at 2026-10-28T12:35:00.000000Z). Previews cannot be applied more than once (replay protection).",
-  "error_message": "Application rejected: Preview #1 has already been claimed or applied (status: APPLIED at 2026-10-28T12:35:00.000000Z). Previews cannot be applied more than once (replay protection)."
+  "confirm_apply": true
 }
+```
+
+### `POST /render-sketch`
+Executes the headless 85mm portrait camera staging, cavity shading pass, and PIL graphite filter.
+```json
+{
+  "character_name": "Human",
+  "case_id": "CASE-2026-001"
+}
+```
+**Response**:
+```json
+{
+  "status": "SUCCESS",
+  "image_url": "/sketches/sketch_20261028_CASE-2026-001_34d74d.png",
+  "filename": "sketch_20261028_CASE-2026-001_34d74d.png",
+  "width": 1024,
+  "height": 1024,
+  "filesize_bytes": 355305,
+  "character_name": "Human",
+  "case_id": "CASE-2026-001"
+}
+```
+
+### `GET /logs?limit=25&case_id=CASE-2026-001`
+Retrieves chain-of-custody audit logs from SQLite.
+
+---
+
+## 7. Safety & Forensic Integrity Protocol
+
+1. **Character Locking**: All mutations are strictly hard-locked to target object `"Human"`. Requests targeting other objects or attempting wildcard mutations are rejected.
+2. **Anti-Drift Protection**: If Blender target values were modified out-of-band between the dry-run preview and apply request, `/apply` halts and rejects the mutation.
+3. **Bounded Morph Targets**: Every modifier proposal is strictly clamped to `[-1.0, 1.0]`. If a witness requests a change beyond anatomical boundaries, the modifier is clamped and a warning is logged.
+4. **Read-Back Verification**: Post-mutation verification checks that the new live Blender value matches the expected value within $\pm 0.001$, confirming zero socket transmission error.
+5. **Zero Cloud Biometrics**: All parsing (Ollama) and rendering (Blender + PIL) run 100% on local loopback addresses (`127.0.0.1`).
+
+---
+
+## 8. Automated Test Suites
+
+### Backend Pytest Suite (174 Tests)
+Validates parser accuracy, asset catalogs, allowlist validation, Ollama timeouts, bridge socket communications, pre-mutation checks, read-back verification, and sketch filtering:
+```powershell
+cd C:\Dept\CrimeSketchAI
+pytest -v
+```
+Output:
+```text
+======================= 174 passed in 5.93s =======================
+```
+
+### Frontend Vitest Suite (29 Tests)
+Validates UI rendering, single-button workflow, comparison diff tables, sketch canvas, accessibility attributes, and audit history:
+```powershell
+cd C:\Dept\CrimeSketchAI\frontend
+npm test
+```
+Output:
+```text
+Test Files  5 passed (5)
+     Tests  29 passed (29)
 ```
 
 ---
 
-## 5. File Structure
+## 9. Troubleshooting & FAQs
 
-```
-C:\Dept\CrimeSketchAI\
-├── controlled_test_log.json         # Pre-test and post-test Blender target log
-├── requirements.txt                 # Backend Python package requirements
-├── README.md                        # Documentation and API guide
-├── refinements.db                   # SQLite database (auto-generated)
-├── backend\
-│   ├── __init__.py
-│   ├── config.py                    # Environment, timeout, CORS, and bridge host/port settings
-│   ├── main.py                      # FastAPI app and route handlers (/health, /features, /refine, /apply, /logs, /state)
-│   ├── models\
-│   │   ├── __init__.py
-│   │   └── schemas.py               # Pydantic schemas (refinement, apply, features, live state)
-│   ├── parser\
-│   │   ├── __init__.py
-│   │   ├── feature_catalog.py       # 10 allowlisted features & MPFB metadata
-│   │   ├── refinement_parser.py     # Deterministic regex & direction rule-based parser
-│   │   ├── ollama_client.py         # Local Ollama HTTP client with timeout, error handling & health probe
-│   │   └── ollama_parser.py         # Neural refinement parser with strict JSON validation & allowlist enforcement
-│   ├── storage\
-│   │   ├── __init__.py
-│   │   └── database.py              # SQLite storage engine with atomic replay protection
-│   └── service\
-│       ├── __init__.py
-│       ├── blender_state_service.py # Read-only Blender bridge live target inspector with bounded timeout
-│       ├── blender_mutation_service.py # Controlled live Blender applicator with 10 safety checkpoints
-│       └── refinement_service.py    # Dual-parser dry-run pipeline and boundary clamp logic
-├── frontend\
-│   ├── package.json                 # React 19, Vite, TypeScript, Vitest
-│   ├── vite.config.ts               # Vite & Vitest configuration
-│   ├── tsconfig.app.json            # Strict TypeScript configuration
-│   └── src\
-│       ├── api\
-│       │   └── client.ts            # Type-safe API client & error normalizer
-│       ├── types\
-│       │   └── api.ts               # Complete TypeScript API models (including parser modes & Ollama health)
-│       ├── components\
-│       │   ├── Header.tsx           # Header with real-time Blender, API & Ollama connection status
-│       │   ├── RefinementForm.tsx   # Command input, parser selector (Rule vs AI), character select & mode toggle
-│       │   ├── PreviewPanel.tsx     # Accurate 3D preview, bilateral metrics, clamping alerts & parser badge
-│       │   └── AuditHistory.tsx     # SQLite audit log viewer with filtering and inspection
-│       ├── test\
-│       │   ├── setup.ts             # Vitest test setup with @testing-library/jest-dom
-│       │   ├── App.test.tsx         # End-to-end status and refinement integration tests
-│       │   ├── PreviewPanel.test.tsx# Tests for previews, bilateral display, rejections, clamping
-│       │   ├── RefinementForm.test.tsx # Form input, mode selection, example chips, no-mutation check
-│       │   └── AuditHistory.test.tsx# Audit log filtering and accordion inspection tests
-│       ├── App.tsx                  # Main workspace coordinator
-│       ├── App.css                  # Restrained dark theme design system
-│       └── index.css                # Base CSS resets and CSS custom properties
-└── tests\
-    ├── __init__.py
-    ├── test_parser.py               # 23 tests: rule-based command syntax, directions, magnitudes
-    ├── test_service.py              # 9 tests: state hardening, caller rejection, bilateral, clamping, whitespace, audit value_source
-    ├── test_api.py                  # 8 tests: HTTP integration tests, state audit, audit logs
-    ├── test_live_state.py           # 9 tests: live reads, asymmetry, timeouts, errors, no-mutation audit
-    ├── test_live_refinement.py      # 11 tests: live refinement previews, asymmetry preservation, zero-fallback
-    ├── test_ollama_parser.py        # 28 tests: client, timeout vs connection errors, conversational JSON extraction, allowlist, no silent fallback
-    └── test_apply.py                # 16 tests: live application safety, state drift, replay protection, verification read-back (104 total backend tests)
-```
+### Q: Blender Bridge status shows "Disconnected" or "Connection Refused (127.0.0.1:9877)"
+* **Solution**: Ensure Blender is open. In the sidebar (`N` panel) under **MPFB** tab → **Developer / Socket Server**, verify the port is `9877` and click **Start MPFB Bridge**. The console should confirm the socket server is running.
+
+### Q: Error: "Object 'Human' not found in Blender scene"
+* **Solution**: CrimeSketchAI enforces strict character locking. In the Blender Outliner, verify that your base human character mesh is named exactly `Human` (case-sensitive).
+
+### Q: Ollama request times out or takes longer than expected
+* **Solution**: The backend default timeout is set to `180.0` seconds in `backend/config.py` to allow reasoning models to run smoothly on CPUs. If you have an NVIDIA GPU, ensure Ollama detects CUDA:
+  ```powershell
+  ollama run qwen3:4b "Hello"
+  ```
+
+### Q: How do I export or download the rendered forensic sketch?
+* **Solution**: In the React frontend, when you click **Generate Sketch**, the rendered $1024 \times 1024$ PNG appears in the right panel with a one-click **Download** button. Files are also stored permanently in `CrimeSketchAI/sketches/`.
+
+---
+
+## License
+
+This software is developed for academic, research, and authorized forensic investigative workflows under the HackFest 2026 NeuraCrime ecosystem.
