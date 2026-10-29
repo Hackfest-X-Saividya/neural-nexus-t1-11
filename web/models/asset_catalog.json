@@ -1,0 +1,708 @@
+{
+  "beard": [
+    {
+      "id": "beard_viking",
+      "name": "Viking Beard",
+      "description": "Full Nordic braided beard with textured grooming",
+      "thumb": "models/bodyparts05_cc0/clothes/rehmanpolanski_beard_viking/rehmanpolanski_beard_viking.png",
+      "obj": "models/bodyparts05_cc0/clothes/rehmanpolanski_beard_viking/beardviking.obj",
+      "texture": "models/bodyparts05_cc0/clothes/rehmanpolanski_beard_viking/BeardViking.png",
+      "license": "CC0 - Rehman Polanski"
+    },
+    {
+      "id": "scruffy_beard",
+      "name": "Scruffy Beard",
+      "description": "Natural rugged medium scruff beard",
+      "thumb": "models/bodyparts05_cc0/clothes/wdg_scruffy_beard/wdg_scruffy_beard.png",
+      "obj": "models/bodyparts05_cc0/clothes/wdg_scruffy_beard/scruffy_beard.obj",
+      "texture": "models/bodyparts05_cc0/clothes/wdg_scruffy_beard/beard2_texture-SMUDGE2.png",
+      "license": "CC0 - WDG"
+    },
+    {
+      "id": "faun_beard",
+      "name": "Faun Beard",
+      "description": "Chiseled pointed chin beard",
+      "thumb": "models/bodyparts05_cc0/clothes/culturalibre_faun_beard/culturalibre_faun_beard.png",
+      "obj": "models/bodyparts05_cc0/clothes/culturalibre_faun_beard/faun_beard.obj",
+      "texture": "models/bodyparts05_cc0/clothes/culturalibre_faun_beard/brown.png",
+      "license": "CC0 - culturalibre"
+    },
+    {
+      "id": "beard_sigmund",
+      "name": "Sigmund Beard",
+      "description": "Classic full academic beard and sideburns",
+      "thumb": "models/bodyparts05_cc0/clothes/grinsegold_beard_sigmund_wip/grinsegold_beard_sigmund_wip.png",
+      "obj": "models/bodyparts05_cc0/clothes/grinsegold_beard_sigmund_wip/beard_sigmund.obj",
+      "license": "CC0 - grinsegold"
+    }
+  ],
+  "moustache": [
+    {
+      "id": "moustache_viking",
+      "name": "Viking Moustache",
+      "description": "Prominent trimmed upper lip moustache",
+      "thumb": "models/bodyparts05_cc0/clothes/rehmanpolanski_moustache_viking/rehmanpolanski_moustache_viking.png",
+      "obj": "models/bodyparts05_cc0/clothes/rehmanpolanski_moustache_viking/moustacheviking.obj",
+      "texture": "models/bodyparts05_cc0/clothes/rehmanpolanski_moustache_viking/MoustacheViking.png",
+      "license": "CC0 - Rehman Polanski"
+    }
+  ],
+  "eyebrows": [
+    {
+      "id": "mindfront_eyebrows_01",
+      "name": "Brow Style #01",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_01",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_01/mindfront_eyebrows_01.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_01/mind_eyebrows_01.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_02",
+      "name": "Brow Style #02",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_02",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_02/mindfront_eyebrows_02.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_02/mind_eyebrows_02.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_03",
+      "name": "Brow Style #03",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_03",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_03/mindfront_eyebrows_03.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_03/mind_eyebrows_03.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_04",
+      "name": "Brow Style #04",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_04",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_04/mindfront_eyebrows_04.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_04/mind_eyebrows_04.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_05",
+      "name": "Brow Style #05",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_05",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_05/mindfront_eyebrows_05.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_05/mind_eyebrows_05.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_06",
+      "name": "Brow Style #06",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_06",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_06/mindfront_eyebrows_06.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_06/mind_eyebrows_06.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_07",
+      "name": "Brow Style #07",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_07",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_07/mindfront_eyebrows_07.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_07/mind_eyebrows_07.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_08",
+      "name": "Brow Style #08",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_08",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_08/mindfront_eyebrows_08.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_08/mind_eyebrows_08.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_09",
+      "name": "Brow Style #09",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_09",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_09/mindfront_eyebrows_09.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_09/mind_eyebrows_09.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_10",
+      "name": "Brow Style #10",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_10",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_10/mindfront_eyebrows_10.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_10/mind_eyebrows_10.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_11",
+      "name": "Brow Style #11",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_11",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_11/mindfront_eyebrows_11.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_11/mind_eyebrows_11.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_12",
+      "name": "Brow Style #12",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_12",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_12/mindfront_eyebrows_12.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_12/mind_eyebrows_12.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_13",
+      "name": "Brow Style #13",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_13",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_13/mindfront_eyebrows_13.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_13/mind_eyebrows_13.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyebrows_14",
+      "name": "Brow Style #14",
+      "description": "Anatomical 3D brow mesh mindfront_eyebrows_14",
+      "thumb": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_14/mindfront_eyebrows_14.png",
+      "obj": "models/eyebrows01_cc0/eyebrows/mindfront_eyebrows_14/mind_eyebrows_14.obj",
+      "license": "CC0 - mindfront"
+    }
+  ],
+  "eyelashes": [
+    {
+      "id": "mindfront_eyelashes_01",
+      "name": "Lash Style #01",
+      "description": "Anatomical 3D eyelid lash mindfront_eyelashes_01",
+      "thumb": "models/eyelashes01_cc0/eyelashes/mindfront_eyelashes_01/mindfront_eyelashes_01.png",
+      "obj": "models/eyelashes01_cc0/eyelashes/mindfront_eyelashes_01/mind_eyelashes_01.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyelashes_02",
+      "name": "Lash Style #02",
+      "description": "Anatomical 3D eyelid lash mindfront_eyelashes_02",
+      "thumb": "models/eyelashes01_cc0/eyelashes/mindfront_eyelashes_02/mindfront_eyelashes_02.png",
+      "obj": "models/eyelashes01_cc0/eyelashes/mindfront_eyelashes_02/mind_eyelashes_02.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyelashes_03",
+      "name": "Lash Style #03",
+      "description": "Anatomical 3D eyelid lash mindfront_eyelashes_03",
+      "thumb": "models/eyelashes01_cc0/eyelashes/mindfront_eyelashes_03/mindfront_eyelashes_03.png",
+      "obj": "models/eyelashes01_cc0/eyelashes/mindfront_eyelashes_03/mind_eyelashes_03.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyelashes_04",
+      "name": "Lash Style #04",
+      "description": "Anatomical 3D eyelid lash mindfront_eyelashes_04",
+      "thumb": "models/eyelashes01_cc0/eyelashes/mindfront_eyelashes_04/mindfront_eyelashes_04.png",
+      "obj": "models/eyelashes01_cc0/eyelashes/mindfront_eyelashes_04/mind_eyelashes_04.obj",
+      "license": "CC0 - mindfront"
+    },
+    {
+      "id": "mindfront_eyelashes_05",
+      "name": "Lash Style #05",
+      "description": "Anatomical 3D eyelid lash mindfront_eyelashes_05",
+      "thumb": "models/eyelashes01_cc0/eyelashes/mindfront_eyelashes_05/mindfront_eyelashes_05.png",
+      "obj": "models/eyelashes01_cc0/eyelashes/mindfront_eyelashes_05/mind_eyelashes_05.obj",
+      "license": "CC0 - mindfront"
+    }
+  ],
+  "skin_male": [
+    {
+      "id": "jartur69_middleage_slavic_male_with_genitals_and_beard",
+      "name": "Middleage slavic male with genitals and beard",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/jartur69_middleage_slavic_male_with_genitals_and_beard/jartur69_middleage_slavic_male_with_genitals_and_beard.png",
+      "texture": "models/MALE SKIN'/skins/jartur69_middleage_slavic_male_with_genitals_and_beard/jartur69_middleage_slavic_male_with_genitals_and_beard.png",
+      "license": "CC0"
+    },
+    {
+      "id": "jartur69_old_slavic_male_with_genitals_and_beard",
+      "name": "Old slavic male with genitals and beard",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/jartur69_old_slavic_male_with_genitals_and_beard/jartur69_old_slavic_male_with_genitals_and_beard.png",
+      "texture": "models/MALE SKIN'/skins/jartur69_old_slavic_male_with_genitals_and_beard/jartur69_old_slavic_male_with_genitals_and_beard.png",
+      "license": "CC0"
+    },
+    {
+      "id": "ken1138_caucasian_male_tattooed_skin",
+      "name": "Ken1138 caucasian male tattooed skin",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/ken1138_caucasian_male_tattooed_skin/Caucasion_TatooedMale_Skin_Difuse.png",
+      "texture": "models/MALE SKIN'/skins/ken1138_caucasian_male_tattooed_skin/Caucasion_TatooedMale_Skin_Difuse.png",
+      "license": "CC0"
+    },
+    {
+      "id": "mindfront_aksel_skin",
+      "name": "Aksel skin",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/mindfront_aksel_skin/Aksel_Skin_diffuse.png",
+      "texture": "models/MALE SKIN'/skins/mindfront_aksel_skin/Aksel_Skin_diffuse.png",
+      "license": "CC0"
+    },
+    {
+      "id": "mindfront_skin_male_african_middleage",
+      "name": "Skin male african middleage",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/mindfront_skin_male_african_middleage/mindfront_skin_male_african_middleage.png",
+      "texture": "models/MALE SKIN'/skins/mindfront_skin_male_african_middleage/mindfront_skin_male_african_middleage.png",
+      "license": "CC0"
+    },
+    {
+      "id": "onlytheghosts_old_eurasian_male",
+      "name": "Onlytheghosts old eurasian male",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/onlytheghosts_old_eurasian_male/old_eurasian_male_diffuse.png",
+      "texture": "models/MALE SKIN'/skins/onlytheghosts_old_eurasian_male/old_eurasian_male_diffuse.png",
+      "license": "CC0"
+    },
+    {
+      "id": "rehmanpolanski_skin_viking_tattoos",
+      "name": "Skin viking tattoos",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/rehmanpolanski_skin_viking_tattoos/rehmanpolanski_skin_viking_tattoos.png",
+      "texture": "models/MALE SKIN'/skins/rehmanpolanski_skin_viking_tattoos/rehmanpolanski_skin_viking_tattoos.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_male_bronze",
+      "name": "Light skin male bronze",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/toigo_light_skin_male_bronze/toigo_light_skin_male_bronze.png",
+      "texture": "models/MALE SKIN'/skins/toigo_light_skin_male_bronze/toigo_light_skin_male_bronze.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_male_freckles",
+      "name": "Light skin male freckles",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/toigo_light_skin_male_freckles/toigo_light_skin_male_freckles.png",
+      "texture": "models/MALE SKIN'/skins/toigo_light_skin_male_freckles/toigo_light_skin_male_freckles.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_male_ginger",
+      "name": "Light skin male ginger",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/toigo_light_skin_male_ginger/toigo_light_skin_male_ginger.png",
+      "texture": "models/MALE SKIN'/skins/toigo_light_skin_male_ginger/toigo_light_skin_male_ginger.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_male_with_emo_eyes",
+      "name": "Light skin male with emo eyes",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/toigo_light_skin_male_with_emo_eyes/toigo_light_skin_male_with_emo_eyes.png",
+      "texture": "models/MALE SKIN'/skins/toigo_light_skin_male_with_emo_eyes/toigo_light_skin_male_with_emo_eyes.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_male_with_eyeliner",
+      "name": "Light skin male with eyeliner",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/toigo_light_skin_male_with_eyeliner/toigo_light_skin_male_with_eyeliner.png",
+      "texture": "models/MALE SKIN'/skins/toigo_light_skin_male_with_eyeliner/toigo_light_skin_male_with_eyeliner.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_male_with_goth_makeup",
+      "name": "Light skin male with goth makeup",
+      "description": "High-res male epidermal diffuse texture",
+      "thumb": "models/MALE SKIN'/skins/toigo_light_skin_male_with_goth_makeup/toigo_light_skin_male_with_goth_makeup.png",
+      "texture": "models/MALE SKIN'/skins/toigo_light_skin_male_with_goth_makeup/toigo_light_skin_male_with_goth_makeup.png",
+      "license": "CC0"
+    }
+  ],
+  "skin_female": [
+    {
+      "id": "blindsaypatten_uniform_skin_texture",
+      "name": "Blindsaypatten uniform skin texture",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.png",
+      "texture": "models/FEMALE SKIN/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.png",
+      "license": "CC0"
+    },
+    {
+      "id": "bobby_03_young_female_hairless",
+      "name": "Bobby 03 young female hairless",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/bobby_03_young_female_hairless/bobby_03_young_female_hairless.png",
+      "texture": "models/FEMALE SKIN/skins/bobby_03_young_female_hairless/bobby_03_young_female_hairless.png",
+      "license": "CC0"
+    },
+    {
+      "id": "callharvey3d_midtoned_female",
+      "name": "Midtoned female",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/callharvey3d_midtoned_female/callharvey3d_midtoned_female.png",
+      "texture": "models/FEMALE SKIN/skins/callharvey3d_midtoned_female/callharvey3d_midtoned_female.png",
+      "license": "CC0"
+    },
+    {
+      "id": "cutoff3d_indian_female_enhanced",
+      "name": "Indian female enhanced",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/cutoff3d_indian_female_enhanced/cutoff3d_indian_female_enhanced.png",
+      "texture": "models/FEMALE SKIN/skins/cutoff3d_indian_female_enhanced/cutoff3d_indian_female_enhanced.png",
+      "license": "CC0"
+    },
+    {
+      "id": "cutoff3d_indian_female_skin",
+      "name": "Indian female skin",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/cutoff3d_indian_female_skin/cutoff3d_indian_female_skin.png",
+      "texture": "models/FEMALE SKIN/skins/cutoff3d_indian_female_skin/cutoff3d_indian_female_skin.png",
+      "license": "CC0"
+    },
+    {
+      "id": "darthfurby_caucasian_female",
+      "name": "Darthfurby caucasian female",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/darthfurby_caucasian_female/darthfurby_caucasian_female.png",
+      "texture": "models/FEMALE SKIN/skins/darthfurby_caucasian_female/darthfurby_caucasian_female.png",
+      "license": "CC0"
+    },
+    {
+      "id": "flower-angel_red_head_skin",
+      "name": "Flower-angel red head skin",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/flower-angel_red_head_skin/flower-angel_red_head_skin.png",
+      "texture": "models/FEMALE SKIN/skins/flower-angel_red_head_skin/flower-angel_red_head_skin.png",
+      "license": "CC0"
+    },
+    {
+      "id": "nyloseth_zoeyskin",
+      "name": "Nyloseth zoeyskin",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/nyloseth_zoeyskin/nyloseth_zoeyskin.png",
+      "texture": "models/FEMALE SKIN/skins/nyloseth_zoeyskin/nyloseth_zoeyskin.png",
+      "license": "CC0"
+    },
+    {
+      "id": "onlytheghosts_middle_aged_eurasian_female",
+      "name": "Middle aged eurasian female",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/onlytheghosts_middle_aged_eurasian_female/middleage_eurasian_female_diffuse.png",
+      "texture": "models/FEMALE SKIN/skins/onlytheghosts_middle_aged_eurasian_female/middleage_eurasian_female_diffuse.png",
+      "license": "CC0"
+    },
+    {
+      "id": "onlytheghosts_old_eurasian_female",
+      "name": "Old eurasian female",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/onlytheghosts_old_eurasian_female/old_eurasian_female_diffuse.png",
+      "texture": "models/FEMALE SKIN/skins/onlytheghosts_old_eurasian_female/old_eurasian_female_diffuse.png",
+      "license": "CC0"
+    },
+    {
+      "id": "onlytheghosts_young_eurasian_female",
+      "name": "Young eurasian female",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/onlytheghosts_young_eurasian_female/onlytheghosts_young_eurasian_female.png",
+      "texture": "models/FEMALE SKIN/skins/onlytheghosts_young_eurasian_female/onlytheghosts_young_eurasian_female.png",
+      "license": "CC0"
+    },
+    {
+      "id": "saltycowdawg_genuine_caucasian_female_with_genitals",
+      "name": "Saltycowdawg genuine caucasian female with genitals",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/saltycowdawg_genuine_caucasian_female_with_genitals/saltycowdawg_genuine_caucasian_female_with_genitals.png",
+      "texture": "models/FEMALE SKIN/skins/saltycowdawg_genuine_caucasian_female_with_genitals/saltycowdawg_genuine_caucasian_female_with_genitals.png",
+      "license": "CC0"
+    },
+    {
+      "id": "skalldyrssuppe_creamy_female",
+      "name": "Skalldyrssuppe creamy female",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/skalldyrssuppe_creamy_female/creamy_female_diffuse.png",
+      "texture": "models/FEMALE SKIN/skins/skalldyrssuppe_creamy_female/creamy_female_diffuse.png",
+      "license": "CC0"
+    },
+    {
+      "id": "spreadcore_alana_caucasian_female_with_genitals_skin",
+      "name": "Spreadcore alana caucasian female with genitals skin",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/spreadcore_alana_caucasian_female_with_genitals_skin/Alana_Caucasian_Female_with_Genitals_skin.png",
+      "texture": "models/FEMALE SKIN/skins/spreadcore_alana_caucasian_female_with_genitals_skin/Alana_Caucasian_Female_with_Genitals_skin.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_female_bronze",
+      "name": "Light skin female bronze",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/toigo_light_skin_female_bronze/toigo_light_skin_female_bronze.png",
+      "texture": "models/FEMALE SKIN/skins/toigo_light_skin_female_bronze/toigo_light_skin_female_bronze.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_female_bronze_with_makeup",
+      "name": "Light skin female bronze with makeup",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/toigo_light_skin_female_bronze_with_makeup/toigo_light_skin_female_bronze_with_makeup.png",
+      "texture": "models/FEMALE SKIN/skins/toigo_light_skin_female_bronze_with_makeup/toigo_light_skin_female_bronze_with_makeup.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_female_freckles",
+      "name": "Light skin female freckles",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/toigo_light_skin_female_freckles/toigo_light_skin_female_freckles.png",
+      "texture": "models/FEMALE SKIN/skins/toigo_light_skin_female_freckles/toigo_light_skin_female_freckles.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_female_ginger",
+      "name": "Light skin female ginger",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/toigo_light_skin_female_ginger/toigo_light_skin_female_ginger.png",
+      "texture": "models/FEMALE SKIN/skins/toigo_light_skin_female_ginger/toigo_light_skin_female_ginger.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_female_ginger_2",
+      "name": "Light skin female ginger 2",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/toigo_light_skin_female_ginger_2/toigo_light_skin_female_ginger_2.png",
+      "texture": "models/FEMALE SKIN/skins/toigo_light_skin_female_ginger_2/toigo_light_skin_female_ginger_2.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_female_ginger_with_makeup",
+      "name": "Light skin female ginger with makeup",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/toigo_light_skin_female_ginger_with_makeup/toigo_light_skin_female_ginger_with_makeup.png",
+      "texture": "models/FEMALE SKIN/skins/toigo_light_skin_female_ginger_with_makeup/toigo_light_skin_female_ginger_with_makeup.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_female_with_violet_makeup",
+      "name": "Light skin female with violet makeup",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/toigo_light_skin_female_with_violet_makeup/toigo_light_skin_female_with_violet_makeup.png",
+      "texture": "models/FEMALE SKIN/skins/toigo_light_skin_female_with_violet_makeup/toigo_light_skin_female_with_violet_makeup.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_with_makeup",
+      "name": "Light skin with makeup",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/toigo_light_skin_with_makeup/toigo_light_skin_with_makeup.png",
+      "texture": "models/FEMALE SKIN/skins/toigo_light_skin_with_makeup/toigo_light_skin_with_makeup.png",
+      "license": "CC0"
+    },
+    {
+      "id": "toigo_light_skin_with_natural_makeup",
+      "name": "Light skin with natural makeup",
+      "description": "High-res female epidermal diffuse texture",
+      "thumb": "models/FEMALE SKIN/skins/toigo_light_skin_with_natural_makeup/toigo_light_skin_with_natural_makeup.png",
+      "texture": "models/FEMALE SKIN/skins/toigo_light_skin_with_natural_makeup/toigo_light_skin_with_natural_makeup.png",
+      "license": "CC0"
+    }
+  ],
+  "eyes": [
+    {
+      "id": "bobby_03_diffuse_amber_eyes",
+      "name": "Amber Eyes",
+      "description": "Realistic iris texture: amber",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/bobby_03_diffuse_amber_eyes/bobby_03_diffuse_amber_eyes.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/bobby_03_diffuse_amber_eyes/bobby_03_diffuse_amber_eyes.png",
+      "license": "CC0"
+    },
+    {
+      "id": "bobby_03_diffuse_blue_eyes",
+      "name": "Blue Eyes",
+      "description": "Realistic iris texture: blue",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/bobby_03_diffuse_blue_eyes/bobby_03_diffuse_blue_eyes.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/bobby_03_diffuse_blue_eyes/bobby_03_diffuse_blue_eyes.png",
+      "license": "CC0"
+    },
+    {
+      "id": "bobby_03_diffuse_grey_eyes",
+      "name": "Grey Eyes",
+      "description": "Realistic iris texture: grey",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/bobby_03_diffuse_grey_eyes/bobby_03_diffuse_grey_eyes.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/bobby_03_diffuse_grey_eyes/bobby_03_diffuse_grey_eyes.png",
+      "license": "CC0"
+    },
+    {
+      "id": "bobby_03_diffuse_hazel_eyes",
+      "name": "Hazel Eyes",
+      "description": "Realistic iris texture: hazel",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/bobby_03_diffuse_hazel_eyes/bobby_03_diffuse_hazel_eyes.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/bobby_03_diffuse_hazel_eyes/bobby_03_diffuse_hazel_eyes.png",
+      "license": "CC0"
+    },
+    {
+      "id": "bobby_03_diffuse_sea_breeze_eyes",
+      "name": "Sea breeze Eyes",
+      "description": "Realistic iris texture: sea breeze",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/bobby_03_diffuse_sea_breeze_eyes/bobby_03_diffuse_sea_breeze_eyes.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/bobby_03_diffuse_sea_breeze_eyes/bobby_03_diffuse_sea_breeze_eyes.png",
+      "license": "CC0"
+    },
+    {
+      "id": "mindfront_brown_eye_02",
+      "name": "Mindfront brown eye 02 Eyes",
+      "description": "Realistic iris texture: mindfront brown eye 02",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/mindfront_brown_eye_02/brown_eye_02.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/mindfront_brown_eye_02/brown_eye_02.png",
+      "license": "CC0"
+    },
+    {
+      "id": "nyloseth_sapphire_blue_eyes",
+      "name": "Nyloseth sapphire blue Eyes",
+      "description": "Realistic iris texture: nyloseth sapphire blue",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/nyloseth_sapphire_blue_eyes/nyloseth_sapphire_blue_eyes.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/nyloseth_sapphire_blue_eyes/nyloseth_sapphire_blue_eyes.png",
+      "license": "CC0"
+    },
+    {
+      "id": "spamrakuen_sr_anime_eyes_navy",
+      "name": "Spamrakuen sr anime navy Eyes",
+      "description": "Realistic iris texture: spamrakuen sr anime navy",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/spamrakuen_sr_anime_eyes_navy/spamrakuen_sr_anime_eyes_navy.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/spamrakuen_sr_anime_eyes_navy/spamrakuen_sr_anime_eyes_navy.png",
+      "license": "CC0"
+    },
+    {
+      "id": "spamrakuen_sr_anime_maid-san_blue_eyes",
+      "name": "Spamrakuen sr anime maid-san blue Eyes",
+      "description": "Realistic iris texture: spamrakuen sr anime maid-san blue",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/spamrakuen_sr_anime_maid-san_blue_eyes/spamrakuen_sr_anime_maid-san_blue_eyes.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/spamrakuen_sr_anime_maid-san_blue_eyes/spamrakuen_sr_anime_maid-san_blue_eyes.png",
+      "license": "CC0"
+    },
+    {
+      "id": "spamrakuen_sr_anime_maid-san_red_eyes",
+      "name": "Spamrakuen sr anime maid-san red Eyes",
+      "description": "Realistic iris texture: spamrakuen sr anime maid-san red",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/spamrakuen_sr_anime_maid-san_red_eyes/spamrakuen_sr_anime_maid-san_red_eyes.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/spamrakuen_sr_anime_maid-san_red_eyes/spamrakuen_sr_anime_maid-san_red_eyes.png",
+      "license": "CC0"
+    },
+    {
+      "id": "wojackowl_blue_eyes_toon",
+      "name": "Blue Eyes",
+      "description": "Realistic iris texture: blue",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/wojackowl_blue_eyes_toon/blue_eye_toon.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/wojackowl_blue_eyes_toon/blue_eye_toon.png",
+      "license": "CC0"
+    },
+    {
+      "id": "wojackowl_brown_eyes_toon",
+      "name": "Brown Eyes",
+      "description": "Realistic iris texture: brown",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/wojackowl_brown_eyes_toon/brown_eye_toon.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/wojackowl_brown_eyes_toon/brown_eye_toon.png",
+      "license": "CC0"
+    },
+    {
+      "id": "wojackowl_green_eyes_toon",
+      "name": "Green Eyes",
+      "description": "Realistic iris texture: green",
+      "thumb": "models/system_eye_materials01_cc0/eyes/materials/wojackowl_green_eyes_toon/green_eye_toon.png",
+      "texture": "models/system_eye_materials01_cc0/eyes/materials/wojackowl_green_eyes_toon/green_eye_toon.png",
+      "license": "CC0"
+    }
+  ],
+  "nose": [
+    {
+      "id": "elvs_bulbous_nose_1",
+      "name": "Bulbous Nose",
+      "description": "Rounded nasal tip anatomical contour",
+      "thumb": "models/nose01_cc0 (2)/targets/nose/elvs_bulbous_nose_1.png",
+      "target": "models/nose01_cc0 (2)/targets/nose/elvs_bulbous_nose_1.target",
+      "license": "CC0"
+    },
+    {
+      "id": "elvs_nose_widening_1",
+      "name": "Wide Nose Bridge",
+      "description": "Expanded nasal alar and bridge width",
+      "thumb": "models/nose01_cc0 (2)/targets/nose/elvs_nose_widening_1.png",
+      "target": "models/nose01_cc0 (2)/targets/nose/elvs_nose_widening_1.target",
+      "license": "CC0"
+    },
+    {
+      "id": "habanero_nostril_flare",
+      "name": "Flared Nostrils",
+      "description": "Lateral nostril wings flare",
+      "thumb": "models/nose01_cc0 (2)/targets/nose/habanero_nostril_flare.png",
+      "target": "models/nose01_cc0 (2)/targets/nose/habanero_nostril_flare.target",
+      "license": "CC0"
+    },
+    {
+      "id": "jujube_greek_nose",
+      "name": "Greek Nose",
+      "description": "Straight dorsal bridge from forehead to tip",
+      "thumb": "models/nose01_cc0 (2)/targets/nose/jujube_greek_nose.png",
+      "target": "models/nose01_cc0 (2)/targets/nose/jujube_greek_nose.target",
+      "license": "CC0"
+    }
+  ],
+  "ears": [
+    {
+      "id": "elvs_ear_flap_bottom_out",
+      "name": "Everted Lobe",
+      "description": "Outward angled lower ear lobe",
+      "thumb": "models/ears01_cc0/targets/ears/elvs_ear_flap_bottom_out.png",
+      "target": "models/ears01_cc0/targets/ears/elvs_ear_flap_bottom_out.target",
+      "license": "CC0"
+    },
+    {
+      "id": "elvs_flap_ears_1",
+      "name": "Prominent Ears",
+      "description": "Lateral outward ear projection",
+      "thumb": "models/ears01_cc0/targets/ears/elvs_flap_ears_1.png",
+      "target": "models/ears01_cc0/targets/ears/elvs_flap_ears_1.target",
+      "license": "CC0"
+    },
+    {
+      "id": "mindfront_ear_detail",
+      "name": "Anatomical Concha",
+      "description": "Defined antihelix and conchal bowl",
+      "thumb": "models/ears01_cc0/targets/ears/mindfront_ear_detail.png",
+      "target": "models/ears01_cc0/targets/ears/mindfront_ear_detail.target",
+      "license": "CC0"
+    }
+  ],
+  "hair": [
+    {
+      "id": "short_crop",
+      "name": "Short Crop",
+      "description": "Clean cranial crop contour",
+      "thumb": "models/system_hair_materials02_cc0/hair/short01/jartur69_short01_brown/jartur69_short01_brown.png",
+      "license": "CC0"
+    },
+    {
+      "id": "side_part",
+      "name": "Side Part",
+      "description": "Classic parted hairline",
+      "thumb": "models/system_hair_materials02_cc0/hair/short02/jartur69_short02_blond/jartur69_short02_blond.png",
+      "license": "CC0"
+    },
+    {
+      "id": "bob",
+      "name": "Bob Cut",
+      "description": "Layered shoulder-length frame",
+      "thumb": "models/system_hair_materials02_cc0/hair/bob01/elvaerwyn_bob_01_flat_black/elvaerwyn_bob_01_flat_black.png",
+      "license": "CC0"
+    },
+    {
+      "id": "curly",
+      "name": "Curly Afro",
+      "description": "Volumetric textured cranial crown",
+      "thumb": "models/system_hair_materials02_cc0/hair/short04/toigo_short_04_violet/toigo_short_04_violet.png",
+      "license": "CC0"
+    }
+  ],
+  "glasses": [
+    {
+      "id": "classic",
+      "name": "Rectangular Frame",
+      "description": "Forensic metal-acetate spectacles with lenses",
+      "license": "Built-in"
+    },
+    {
+      "id": "round",
+      "name": "Round Wireframe",
+      "description": "Circular wireframe glasses over nose bridge",
+      "license": "Built-in"
+    }
+  ]
+}

@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Neural Crime 3D Viewer</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #F1F5F9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+    
+    /* Top-Left Studio Background Switcher */
+    #bg-toolbar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 95;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.90);
+      border: 1px solid #CBD5E1;
+      padding: 4px 8px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(6px);
+      user-select: none;
+    }
+    .bg-btn {
+      border: 1px solid #CBD5E1;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+    .bg-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    /* Draggable Info Overlay (Default on Top-Right away from face!) */
+    #overlay {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      left: auto;
+      color: #1E293B;
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid #CBD5E1;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+      padding: 8px 12px;
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      max-width: 320px;
+      user-select: none;
+      touch-action: none;
+    }
+    #drag-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: grab;
+      border-bottom: 1px solid #E2E8F0;
+      padding-bottom: 5px;
+      margin-bottom: 6px;
+    }
+    #drag-header:active {
+      cursor: grabbing;
+    }
+    #overlay .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+      background: rgba(211, 47, 47, 0.12);
+      color: #D32F2F;
+      border: 1px solid rgba(211, 47, 47, 0.3);
+      margin-bottom: 4px;
+    }
+    #features-list {
+      color: #475569;
+      margin-top: 3px;
+      font-size: 10px;
+      line-height: 1.3;
+    }
+    #min-btn {
+      background: #E2E8F0;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #475569;
+      cursor: pointer;
+      padding: 2px 6px;
+    }
+    #min-btn:hover {
+      background: #CBD5E1;
+    }
+
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #1E293B;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 16px 24px;
+      border-radius: 12px;
+      border: 1px solid #CBD5E1;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid #CBD5E1;
+      border-top-color: #D32F2F;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+</head>
+<body>
+  <div id="canvas-container">
+    <div id="loading">
+      <div class="spinner"></div>
+      <div id="loading-text">Loading 3D Base Model...</div>
+    </div>
+
+    <!-- Top-Left Light Studio Background Switcher -->
+    <div id="bg-toolbar">
+      <span style="font-size:10px; font-weight:bold; color:#64748B;">BG:</span>
+      <button class="bg-btn" onclick="setStudioBackground('light')" style="background:#F1F5F9; color:#0F172A;">☀️ Light</button>
+      <button class="bg-btn" onclick="setStudioBackground('warm')" style="background:#FAF6F0; color:#451A03;">🏛️ Warm</button>
+      <button class="bg-btn" onclick="setStudioBackground('slate')" style="background:#E2E8F0; color:#1E293B;">🏥 Slate</button>
+      <button class="bg-btn" onclick="setStudioBackground('dark')" style="background:#101216; color:#F8FAFC;">🌙 Dark</button>
+    </div>
+
+    <!-- Draggable Info Overlay (Default in Top-Right corner) -->
+    <div id="overlay">
+      <div id="drag-header">
+        <span style="font-size:10px; font-weight:bold; color:#64748B; display:flex; align-items:center; gap:4px;">
+          <span style="font-size:12px;">⠿</span> DRAG CARD
+        </span>
+        <button id="min-btn" onclick="toggleOverlayCollapse()" title="Minimize / Expand">_</button>
+      </div>
+      <div id="overlay-body">
+        <div class="badge" id="model-tag">ANATOMICAL ATTACHMENT SYSTEM</div>
+        <div id="model-stats" style="font-weight:600; color:#334155;">Base: MALE.GLB | Auto-fitting calibrated</div>
+        <div id="focus-stat" style="color: #0284C7; margin-top: 2px;">Camera: Face Close-up</div>
+        <div id="features-list">Active Slots: Clean Baseline</div>
+        <div style="color: #94A3B8; margin-top: 4px; font-size:9.5px;">Drag to rotate • Scroll to zoom</div>
+      </div>
+    </div>
+
+    <!-- Interactive Hair Drag & Fit HUD -->
+    <div id="hair-drag-badge" style="display:none; position:absolute; top:12px; left:50%; transform:translateX(-50%); background:rgba(9,13,20,0.95); border:1.5px solid #00BFA5; border-radius:24px; padding:6px 16px; color:#ECEFF4; font-size:12px; font-weight:600; box-shadow:0 6px 24px rgba(0,0,0,0.6); z-index:900; align-items:center; gap:12px; backdrop-filter:blur(8px);">
+      <span style="display:flex; align-items:center; gap:6px;">
+        <span style="color:#2DD4BF; font-size:14px;">✂️</span>
+        <span><b>Drag Hair with Mouse</b></span>
+      </span>
+      <span id="hair-coords" style="font-family:monospace; background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:6px; color:#2DD4BF; font-size:11px;">Y: 0.0 cm | Z: 0.0 cm</span>
+      <button onclick="snapHairToHead()" style="background:#00BFA5; color:#090D14; border:none; border-radius:12px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:bold; transition:all 0.2s;" onmouseover="this.style.background='#2DD4BF'" onmouseout="this.style.background='#00BFA5'">Snap to Head</button>
+      <button onclick="hideHairDragBadge()" style="background:#1E283C; color:#8E99A8; border:none; border-radius:12px; padding:4px 8px; font-size:11px; cursor:pointer;">✕</button>
+    </div>
+  </div>
+
+  <script>
+    let scene, camera, renderer, controls, gridHelper;
+    let currentMeshGroup = null;
+    let humanMesh = null;
+    let baselinePositions = null;
+    let currentModelName = 'male.glb';
+    let currentStudioBg = 'light';
+    
+    const gltfLoader = new THREE.GLTFLoader();
+    const objLoader = new THREE.OBJLoader();
+    const textureLoader = new THREE.TextureLoader();
+
+    let currentScale = { x: 1.0, y: 1.0, z: 1.0 };
+    let currentFocus = 'face';
+    let currentPreset = 'front';
+    let currentSkinTone = 'fair';
+    let activeDiffuseTexture = null;
+
+    // Active morph deformations for nose/ears
+    const activeMorphTargets = {
+      nose: null,
+      ears: null
+    };
+
+    function resolveAssetUrl(url) {
+      if (!url) return '';
+      return encodeURI(url);
+    }
+
+    function tryLoadTexture(url, onLoad, onError) {
+      const primary = resolveAssetUrl(url);
+      textureLoader.load(
+        primary,
+        function (tex) { if (onLoad) onLoad(tex); },
+        undefined,
+        function (err) {
+          const alt = primary.startsWith('assets/') ? primary.slice(7) : ('assets/' + primary);
+          textureLoader.load(
+            alt,
+            function (tex) { if (onLoad) onLoad(tex); },
+            undefined,
+            function (err2) {
+              console.error('All texture paths failed for:', url, err2);
+              if (onError) onError(err2);
+            }
+          );
+        }
+      );
+    }
+
+    function tryLoadOBJ(url, onLoad, onError) {
+      const primary = resolveAssetUrl(url);
+      objLoader.load(
+        primary,
+        function (obj) { if (onLoad) onLoad(obj); },
+        undefined,
+        function (err) {
+          const alt = primary.startsWith('assets/') ? primary.slice(7) : ('assets/' + primary);
+          objLoader.load(
+            alt,
+            function (obj) { if (onLoad) onLoad(obj); },
+            undefined,
+            function (err2) {
+              console.error('All OBJ paths failed for:', url, err2);
+              if (onError) onError(err2);
+            }
+          );
+        }
+      );
+    }
+
+    // Precise Anatomical Anchors
+    const ANCHORS = {
+      'male.glb': {
+        scalp:     { y: 1.780, z: 0.055, scale: 1.0 },
+        eyebrows:  { y: 1.702, z: 0.155, spacing: 0.038, scale: 1.0 },
+        eyelashes: { y: 1.666, z: 0.148, spacing: 0.038, scale: 1.0 },
+        eyes:      { y: 1.661, z: 0.1415, spacing: 0.0385, scale: 1.0 },
+        glasses:   { y: 1.662, z: 0.152, spacing: 0.038, scale: 1.0 },
+        nose:      { y: 1.626, z: 0.172, scale: 1.0 },
+        ears:      { y: 1.660, x: 0.088, z: 0.010, scale: 1.0 },
+        moustache: { y: 1.558, z: 0.138, scale: 1.0 },
+        beard:     { y: 1.535, z: 0.095, scale: 1.0 },
+        hats:      { y: 1.780, z: 0.055, scale: 1.0 },
+        outfits:   { y: 1.000, z: 0.000, scale: 1.0 },
+        cameraY:   1.66,
+        distFace:  0.98
+      },
+      'female.glb': {
+        scalp:     { y: 1.680, z: 0.040, scale: 0.96 },
+        eyebrows:  { y: 1.602, z: 0.144, spacing: 0.036, scale: 0.96 },
+        eyelashes: { y: 1.574, z: 0.140, spacing: 0.036, scale: 0.96 },
+        eyes:      { y: 1.571, z: 0.1335, spacing: 0.0360, scale: 0.96 },
+        glasses:   { y: 1.572, z: 0.144, spacing: 0.036, scale: 0.96 },
+        nose:      { y: 1.536, z: 0.160, scale: 0.95 },
+        ears:      { y: 1.562, x: 0.086, z: 0.008, scale: 0.96 },
+        moustache: { y: 1.475, z: 0.128, scale: 0.95 },
+        beard:     { y: 1.447, z: 0.083, scale: 0.95 },
+        hats:      { y: 1.680, z: 0.040, scale: 0.96 },
+        outfits:   { y: 0.950, z: 0.000, scale: 0.96 },
+        cameraY:   1.57,
+        distFace:  0.92
+      }
+    };
+
+    const activeSlots = {
+      hair: { id: 'none', mesh: null, offsetY: 0, offsetZ: 0, scale: 1.0, obj: null, texture: null },
+      eyebrows: { id: 'none', mesh: null, offsetY: 0, offsetZ: 0, scale: 1.0, obj: null, texture: null },
+      eyelashes: { id: 'none', mesh: null, offsetY: 0, offsetZ: 0, scale: 1.0, obj: null, texture: null },
+      glasses: { id: 'none', mesh: null, offsetY: 0, offsetZ: 0, scale: 1.0, obj: null, texture: null },
+      beard: { id: 'none', mesh: null, offsetY: 0, offsetZ: 0, scale: 1.0, obj: null, texture: null },
+      moustache: { id: 'none', mesh: null, offsetY: 0, offsetZ: 0, scale: 1.0, obj: null, texture: null },
+      nose: { id: 'none', mesh: null, offsetY: 0, offsetZ: 0, scale: 1.0, target: null },
+      ears: { id: 'none', mesh: null, offsetY: 0, offsetZ: 0, scale: 1.0, target: null },
+      hats: { id: 'none', mesh: null, offsetY: 0, offsetZ: 0, scale: 1.0, obj: null, texture: null },
+      outfits: { id: 'none', mesh: null, offsetY: 0, offsetZ: 0, scale: 1.0, obj: null, texture: null },
+      eyes: { id: 'none', mesh: null, texture: null },
+      skin: { id: 'fair', texture: null }
+    };
+
+    let attachmentRoot = new THREE.Group();
+
+    const skinTones = {
+      fair: 0xF4D6C4,
+      olive: 0xD4AB8A,
+      tan: 0xB87E54,
+      dark: 0x503322,
+      clay: 0xD0D5DC
+    };
+
+    function init() {
+      const container = document.getElementById('canvas-container');
+      
+      scene = new THREE.Scene();
+      setStudioBackground('light');
+
+      camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+      
+      renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(window.devicePixelRatio || 1);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      renderer.shadowMap.enabled = true;
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 0.30;
+      controls.maxDistance = 5.0;
+
+      // Studio Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.92);
+      scene.add(ambientLight);
+
+      const keyLight = new THREE.DirectionalLight(0xfff6ee, 1.25);
+      keyLight.position.set(1.8, 2.8, 2.2);
+      scene.add(keyLight);
+
+      const fillLight = new THREE.DirectionalLight(0x88aacc, 0.85);
+      fillLight.position.set(-1.8, 1.6, 1.5);
+      scene.add(fillLight);
+
+      const rimLight = new THREE.DirectionalLight(0xff6659, 0.60);
+      rimLight.position.set(0, 2.2, -2.0);
+      scene.add(rimLight);
+
+      gridHelper = new THREE.GridHelper(4, 20, 0x94A3B8, 0xCBD5E1);
+      gridHelper.position.y = 0;
+      scene.add(gridHelper);
+
+      window.addEventListener('resize', onWindowResize, false);
+
+      initDraggableOverlay();
+      initHairMouseDragging();
+      loadModel('models/male.glb');
+
+      animate();
+    }
+
+    // STUDIO BACKGROUND SWITCHER (Light, Warm, Slate, Dark)
+    function setStudioBackground(theme) {
+      currentStudioBg = theme;
+      const overlay = document.getElementById('overlay');
+      const bgToolbar = document.getElementById('bg-toolbar');
+
+      if (theme === 'light') {
+        scene.background = new THREE.Color(0xF1F5F9);
+        if (gridHelper) { gridHelper.material.color.setHex(0xCBD5E1); }
+        document.body.style.backgroundColor = '#F1F5F9';
+        if (overlay) {
+          overlay.style.background = 'rgba(255, 255, 255, 0.94)';
+          overlay.style.color = '#1E293B';
+          overlay.style.borderColor = '#CBD5E1';
+        }
+      } else if (theme === 'warm') {
+        scene.background = new THREE.Color(0xFAF6F0);
+        if (gridHelper) { gridHelper.material.color.setHex(0xD6D0C7); }
+        document.body.style.backgroundColor = '#FAF6F0';
+        if (overlay) {
+          overlay.style.background = 'rgba(255, 255, 255, 0.94)';
+          overlay.style.color = '#2D2825';
+          overlay.style.borderColor = '#E7DFD5';
+        }
+      } else if (theme === 'slate') {
+        scene.background = new THREE.Color(0xE2E8F0);
+        if (gridHelper) { gridHelper.material.color.setHex(0x94A3B8); }
+        document.body.style.backgroundColor = '#E2E8F0';
+        if (overlay) {
+          overlay.style.background = 'rgba(255, 255, 255, 0.94)';
+          overlay.style.color = '#1E293B';
+          overlay.style.borderColor = '#94A3B8';
+        }
+      } else if (theme === 'dark') {
+        scene.background = new THREE.Color(0x101216);
+        if (gridHelper) { gridHelper.material.color.setHex(0x2B3242); }
+        document.body.style.backgroundColor = '#101216';
+        if (overlay) {
+          overlay.style.background = 'rgba(24, 27, 34, 0.94)';
+          overlay.style.color = '#ECEFF4';
+          overlay.style.borderColor = '#2B3242';
+        }
+      }
+    }
+
+    // DRAGGABLE INFO CARD IMPLEMENTATION
+    function initDraggableOverlay() {
+      const el = document.getElementById('overlay');
+      const handle = document.getElementById('drag-header');
+      if (!el || !handle) return;
+
+      let isDragging = false;
+      let startX, startY, origLeft, origTop;
+
+      handle.addEventListener('mousedown', function (e) {
+        if (e.target.tagName === 'BUTTON') return;
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = el.getBoundingClientRect();
+        origLeft = rect.left;
+        origTop = rect.top;
+
+        // Switch to explicit left/top positioning on drag
+        el.style.left = origLeft + 'px';
+        el.style.top = origTop + 'px';
+        el.style.right = 'auto';
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+
+      function onMouseMove(e) {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        el.style.left = Math.max(10, Math.min(window.innerWidth - el.offsetWidth - 10, origLeft + dx)) + 'px';
+        el.style.top = Math.max(10, Math.min(window.innerHeight - el.offsetHeight - 10, origTop + dy)) + 'px';
+      }
+
+      function onMouseUp() {
+        isDragging = false;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      }
+    }
+
+    let isOverlayCollapsed = false;
+    function toggleOverlayCollapse() {
+      const body = document.getElementById('overlay-body');
+      const btn = document.getElementById('min-btn');
+      if (!body || !btn) return;
+
+      isOverlayCollapsed = !isOverlayCollapsed;
+      if (isOverlayCollapsed) {
+        body.style.display = 'none';
+        btn.innerText = '+';
+        btn.title = 'Expand Info Card';
+      } else {
+        body.style.display = 'block';
+        btn.innerText = '_';
+        btn.title = 'Minimize Card';
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      if (controls) controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function loadModel(modelPath) {
+      document.getElementById('loading').style.display = 'flex';
+      const file = modelPath.split('/').pop();
+      document.getElementById('loading-text').innerText = 'Loading ' + file + '...';
+
+      const primary = resolveAssetUrl(modelPath);
+      gltfLoader.load(
+        primary,
+        function (gltf) { onModelLoadedSuccess(gltf, file); },
+        undefined,
+        function (error) {
+          const alt = primary.startsWith('assets/') ? primary.slice(7) : ('assets/' + primary);
+          gltfLoader.load(alt, function (gltf) { onModelLoadedSuccess(gltf, file); });
+        }
+      );
+    }
+
+    function onModelLoadedSuccess(gltf, file) {
+      if (currentMeshGroup) {
+        scene.remove(currentMeshGroup);
+      }
+
+      currentMeshGroup = gltf.scene;
+      humanMesh = null;
+
+      currentMeshGroup.traverse(function (child) {
+        if (child.isMesh && !humanMesh) {
+          humanMesh = child;
+          
+          if (!child.geometry.attributes.uv) {
+            const pos = child.geometry.attributes.position;
+            const uvs = new Float32Array(pos.count * 2);
+            for (let i = 0; i < pos.count; i++) {
+              const x = pos.getX(i);
+              const y = pos.getY(i);
+              const z = pos.getZ(i);
+
+              let u = 0.5;
+              let v = 0.5;
+
+              // MakeHuman anatomical layout
+              if (y >= 1.48) {
+                // Head & Face (MakeHuman face UV quadrant: U ~ 0.55..0.92, V ~ 0.25..0.65)
+                if (z > 0.02) {
+                  u = 0.74 - (x / 0.18) * 0.18;
+                  v = 0.44 + ((y - 1.63) / 0.28) * 0.22;
+                } else {
+                  u = 0.74 + (x / 0.18) * 0.18;
+                  v = 0.75 + ((y - 1.63) / 0.28) * 0.18;
+                }
+              } else if (y >= 0.90) {
+                // Torso & Upper body
+                u = 0.35 + (x / 0.45) * 0.15;
+                v = 0.40 + ((y - 0.90) / 0.60) * 0.45;
+              } else {
+                // Lower body & legs
+                u = 0.30 + (x / 0.45) * 0.15;
+                v = (y / 0.90) * 0.40;
+              }
+
+              uvs[i * 2] = Math.max(0.01, Math.min(0.99, u));
+              uvs[i * 2 + 1] = Math.max(0.01, Math.min(0.99, v));
+            }
+            child.geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+            child.geometry.attributes.uv.needsUpdate = true;
+          }
+
+          const posAttr = child.geometry.attributes.position;
+          baselinePositions = new Float32Array(posAttr.array);
+        }
+      });
+
+      const box = new THREE.Box3().setFromObject(currentMeshGroup);
+      currentMeshGroup.position.x = 0;
+      currentMeshGroup.position.y = -box.min.y;
+      currentMeshGroup.position.z = 0;
+
+      currentMeshGroup.add(attachmentRoot);
+
+      currentModelName = file;
+      scene.add(currentMeshGroup);
+
+      applySkinMaterial();
+      rebuildAllAttachments();
+      reapplyMorphs();
+      updateFocusCamera();
+      updateStatsUI();
+
+      document.getElementById('loading').style.display = 'none';
+      notifyParent({ type: 'MODEL_LOADED', model: currentModelName });
+    }
+
+    function applySkinMaterial() {
+      if (!currentMeshGroup) return;
+
+      currentMeshGroup.traverse(function (child) {
+        if (child.isMesh) {
+          if (activeDiffuseTexture) {
+            child.material = new THREE.MeshStandardMaterial({
+              map: activeDiffuseTexture,
+              color: 0xFFFFFF,
+              roughness: 0.50,
+              metalness: 0.0,
+            });
+          } else {
+            const col = skinTones[currentSkinTone] || skinTones.fair;
+            child.material = new THREE.MeshStandardMaterial({
+              color: col,
+              roughness: 0.52,
+              metalness: 0.0,
+            });
+          }
+          child.material.needsUpdate = true;
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+    }
+
+    function getAnchor(slot) {
+      const modelKey = currentModelName.includes('female') ? 'female.glb' : 'male.glb';
+      const actualSlot = (slot === 'hair') ? 'scalp' : slot;
+      const dict = ANCHORS[modelKey] || ANCHORS['male.glb'];
+      const anchor = (dict && (dict[actualSlot] || dict[slot])) || 
+                     (ANCHORS['male.glb'] && (ANCHORS['male.glb'][actualSlot] || ANCHORS['male.glb'][slot])) || 
+                     (ANCHORS['female.glb'] && (ANCHORS['female.glb'][actualSlot] || ANCHORS['female.glb'][slot]));
+      return anchor || { y: 1.66, z: 0.14, scale: 1.0 };
+    }
+
+    // MORPH TARGET DEFORMATION PIPELINE
+    async function loadAndApplyMorph(slot, targetUrl) {
+      if (!humanMesh || !baselinePositions || !targetUrl) return;
+
+      try {
+        let resp = await fetch(resolveAssetUrl(targetUrl));
+        if (!resp.ok) {
+          const alt = targetUrl.startsWith('assets/') ? targetUrl.slice(7) : ('assets/' + targetUrl);
+          resp = await fetch(resolveAssetUrl(alt));
+        }
+        const text = await resp.text();
+        const lines = text.split('\n');
+        const deltas = [];
+
+        for (let i = 0; i < lines.length; i++) {
+          const parts = lines[i].trim().split(/\s+/);
+          if (parts.length >= 4) {
+            const idx = parseInt(parts[0], 10);
+            const dx = parseFloat(parts[1]) * 0.1;
+            const dy = parseFloat(parts[2]) * 0.1;
+            const dz = parseFloat(parts[3]) * 0.1;
+            deltas.push({ idx, dx, dy, dz });
+          }
+        }
+
+        activeMorphTargets[slot] = deltas;
+        reapplyMorphs();
+      } catch (e) {
+        console.warn('Failed to load target morph:', targetUrl, e);
+      }
+    }
+
+    function reapplyMorphs() {
+      if (!humanMesh || !baselinePositions) return;
+
+      const pos = humanMesh.geometry.attributes.position;
+      pos.array.set(baselinePositions);
+
+      for (let s in activeMorphTargets) {
+        const deltas = activeMorphTargets[s];
+        if (deltas && deltas.length > 0) {
+          for (let i = 0; i < deltas.length; i++) {
+            const d = deltas[i];
+            const baseIdx = d.idx * 3;
+            if (baseIdx + 2 < pos.array.length) {
+              pos.array[baseIdx] += d.dx;
+              pos.array[baseIdx + 1] += d.dy;
+              pos.array[baseIdx + 2] += d.dz;
+            }
+          }
+        }
+      }
+
+      pos.needsUpdate = true;
+      humanMesh.geometry.computeVertexNormals();
+    }
+
+    function applyAsset(slot, assetId, customOffsets, extraData) {
+      const slotData = activeSlots[slot];
+      if (!slotData) return;
+
+      slotData.id = assetId;
+      if (extraData) {
+        if (extraData.obj) slotData.obj = extraData.obj;
+        if (extraData.texture) slotData.texture = extraData.texture;
+        if (extraData.target) slotData.target = extraData.target;
+      }
+
+      if (customOffsets) {
+        if (customOffsets.offsetY !== undefined) slotData.offsetY = customOffsets.offsetY;
+        if (customOffsets.offsetZ !== undefined) slotData.offsetZ = customOffsets.offsetZ;
+        if (customOffsets.scale !== undefined) slotData.scale = customOffsets.scale;
+      }
+
+      if (slot === 'skin') {
+        if (extraData && extraData.texture) {
+          tryLoadTexture(extraData.texture, function(tex) {
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            activeDiffuseTexture = tex;
+            applySkinMaterial();
+          });
+        } else {
+          activeDiffuseTexture = null;
+          setSkinTone(assetId);
+        }
+        updateStatsUI();
+        notifyParent({ type: 'ASSET_UPDATED', slot: slot, assetId: assetId });
+        return;
+      }
+
+      if ((slot === 'nose' || slot === 'ears') && extraData && extraData.target) {
+        loadAndApplyMorph(slot, extraData.target);
+        updateStatsUI();
+        notifyParent({ type: 'ASSET_UPDATED', slot: slot, assetId: assetId });
+        return;
+      }
+
+      buildSlotMesh(slot);
+      updateStatsUI();
+      notifyParent({ type: 'ASSET_UPDATED', slot: slot, assetId: assetId });
+    }
+
+    function removeAsset(slot) {
+      const slotData = activeSlots[slot];
+      if (!slotData) return;
+
+      if (slot === 'skin') {
+        activeDiffuseTexture = null;
+        applySkinMaterial();
+        slotData.id = 'fair';
+        updateStatsUI();
+        notifyParent({ type: 'ASSET_REMOVED', slot: slot });
+        return;
+      }
+
+      if (slot === 'nose' || slot === 'ears') {
+        activeMorphTargets[slot] = null;
+        reapplyMorphs();
+      }
+
+      if (slot === 'hair') {
+        hideHairDragBadge();
+      }
+
+      if (slotData.mesh) {
+        attachmentRoot.remove(slotData.mesh);
+        slotData.mesh = null;
+      }
+      slotData.id = 'none';
+      slotData.offsetY = 0;
+      slotData.offsetZ = 0;
+      slotData.scale = 1.0;
+      slotData.obj = null;
+      slotData.texture = null;
+      slotData.target = null;
+
+      updateStatsUI();
+      notifyParent({ type: 'ASSET_REMOVED', slot: slot });
+    }
+
+    function resetAssetOffset(slot) {
+      const slotData = activeSlots[slot];
+      if (!slotData) return;
+      slotData.offsetY = 0;
+      slotData.offsetZ = 0;
+      slotData.scale = 1.0;
+      buildSlotMesh(slot);
+    }
+
+    function rebuildAllAttachments() {
+      for (let slot in activeSlots) {
+        if (activeSlots[slot].id !== 'none' && slot !== 'skin' && slot !== 'nose' && slot !== 'ears') {
+          buildSlotMesh(slot);
+        } else if (activeSlots[slot].mesh && (activeSlots[slot].id === 'none')) {
+          attachmentRoot.remove(activeSlots[slot].mesh);
+          activeSlots[slot].mesh = null;
+        }
+      }
+    }
+
+    function buildSlotMesh(slot) {
+      const slotData = activeSlots[slot];
+      if (!slotData || slotData.id === 'none') {
+        if (slotData && slotData.mesh) {
+          attachmentRoot.remove(slotData.mesh);
+          slotData.mesh = null;
+        }
+        if (slot === 'hair') {
+          hideHairDragBadge();
+        }
+        return;
+      }
+
+      if (slotData.mesh) {
+        attachmentRoot.remove(slotData.mesh);
+        slotData.mesh = null;
+      }
+
+      const anchor = getAnchor(slot) || { y: 1.66, z: 0.14, scale: 1.0 };
+      const totalY = (anchor.y !== undefined ? anchor.y : 1.66) + (slotData.offsetY || 0);
+      const totalZ = (anchor.z !== undefined ? anchor.z : 0.14) + (slotData.offsetZ || 0);
+      const totalScale = ((anchor.scale !== undefined ? anchor.scale : 1.0)) * (slotData.scale || 1.0);
+      const isFemale = currentModelName.includes('female');
+
+      // 1. Real MakeHuman OBJ Mesh (Hair, Eyebrows, Eyelashes, Beard, Moustache)
+      if (slotData.obj) {
+        tryLoadOBJ(slotData.obj, function(loadedObj) {
+          if (slotData.mesh) attachmentRoot.remove(slotData.mesh);
+
+          // Apply default visible material immediately so geometry is rendered instantly
+          applyObjMaterial(loadedObj, null);
+
+          if (slotData.texture) {
+            tryLoadTexture(slotData.texture, function(tex) {
+              applyObjMaterial(loadedObj, tex);
+            });
+          }
+
+          const wrapper = new THREE.Group();
+          wrapper.add(loadedObj);
+
+          const objBox = new THREE.Box3().setFromObject(loadedObj);
+
+          let baseScale = (isFemale ? 0.096 : 0.10) * (slotData.scale || 1.0);
+          let yShift = (isFemale ? 0.770 : 0.8234) + (slotData.offsetY || 0);
+          let zShift = (isFemale ? -0.0160 : -0.0173) + (slotData.offsetZ || 0);
+
+          if (slot === 'hair') {
+            baseScale = (isFemale ? 0.104 : 0.109) * (slotData.scale || 1.0);
+            const targetCrownY = isFemale ? 1.685 : 1.785;
+            const extraVol = (slotData.id && slotData.id.includes('afro')) ? 0.035 : 0.010;
+            const hairBaseY = (targetCrownY + extraVol) - (objBox.max.y * baseScale);
+            const headCenterZ = isFemale ? 0.040 : 0.053;
+            const hairCenterZ = ((objBox.min.z + objBox.max.z) / 2) * baseScale;
+            const hairBaseZ = headCenterZ - hairCenterZ;
+
+            slotData.baseY = hairBaseY;
+            slotData.baseZ = hairBaseZ;
+
+            yShift = hairBaseY + (slotData.offsetY || 0);
+            zShift = hairBaseZ + (slotData.offsetZ || 0);
+            showHairDragBadge(true);
+          } else if (slot === 'hats') {
+            baseScale = (isFemale ? 0.102 : 0.108) * (slotData.scale || 1.0);
+            const targetCrownY = isFemale ? 1.685 : 1.785;
+            const hatBaseY = (targetCrownY + 0.015) - (objBox.max.y * baseScale);
+            const headCenterZ = isFemale ? 0.040 : 0.053;
+            const hatCenterZ = ((objBox.min.z + objBox.max.z) / 2) * baseScale;
+            const hatBaseZ = headCenterZ - hatCenterZ;
+
+            slotData.baseY = hatBaseY;
+            slotData.baseZ = hatBaseZ;
+
+            yShift = hatBaseY + (slotData.offsetY || 0);
+            zShift = hatBaseZ + (slotData.offsetZ || 0);
+          } else if (slot === 'outfits') {
+            baseScale = (isFemale ? 0.096 : 0.100) * (slotData.scale || 1.0);
+            if (objBox.min.y > -1.0) {
+              // Ground/feet-anchored outfits (e.g. male_worksuit01 overalls)
+              yShift = (isFemale ? -0.050 : 0.000) + (slotData.offsetY || 0);
+              zShift = (isFemale ? -0.010 : 0.000) + (slotData.offsetZ || 0);
+            } else {
+              // Pelvis/hip-anchored suits (e.g. elegant suit, casual suit)
+              yShift = (isFemale ? 0.770 : 0.8234) + (slotData.offsetY || 0);
+              zShift = (isFemale ? -0.0160 : -0.0173) + (slotData.offsetZ || 0);
+            }
+          } else if (slot === 'eyebrows') {
+            // Brow ridge anatomical alignment on supraorbital margin
+            baseScale = (isFemale ? 0.096 : 0.100) * (slotData.scale || 1.0);
+            yShift = (isFemale ? 0.884 : 0.954) + (slotData.offsetY || 0);
+            zShift = (isFemale ? 0.005 : 0.008) + (slotData.offsetZ || 0);
+          } else if (slot === 'eyelashes') {
+            // Eyelid margin anatomical alignment
+            baseScale = (isFemale ? 0.096 : 0.100) * (slotData.scale || 1.0);
+            yShift = (isFemale ? 0.859 : 0.934) + (slotData.offsetY || 0);
+            zShift = (isFemale ? -0.005 : -0.0017) + (slotData.offsetZ || 0);
+          } else if (slot === 'beard') {
+            yShift = (isFemale ? 0.770 : 0.846) + (slotData.offsetY || 0);
+            zShift = (isFemale ? -0.012 : -0.010) + (slotData.offsetZ || 0);
+          } else if (slot === 'moustache') {
+            yShift = (isFemale ? 0.770 : 0.840) + (slotData.offsetY || 0);
+            zShift = (isFemale ? -0.012 : -0.010) + (slotData.offsetZ || 0);
+          }
+
+          wrapper.scale.set(baseScale, baseScale, baseScale);
+          wrapper.position.set(0, yShift, zShift);
+
+          slotData.mesh = wrapper;
+          attachmentRoot.add(wrapper);
+          updateStatsUI();
+        });
+        return;
+      }
+
+      function applyObjMaterial(objGroup, texture) {
+        objGroup.traverse(function(child) {
+          if (child.isMesh) {
+            if (child.geometry) {
+              child.geometry.computeVertexNormals();
+            }
+            if (texture) {
+              child.material = new THREE.MeshStandardMaterial({
+                map: texture,
+                transparent: true,
+                alphaTest: 0.05,
+                roughness: 0.65,
+                metalness: 0.05,
+                side: THREE.DoubleSide,
+                depthWrite: true
+              });
+            } else {
+              let matColor = 0x221B16;
+              if (slot === 'eyebrows') matColor = 0x1A1410;
+              else if (slot === 'eyelashes') matColor = 0x080706;
+              else if (slot === 'hair') {
+                if (slotData.id.includes('short02') || slotData.id.includes('blond')) matColor = 0xC8A24A;
+                else if (slotData.id.includes('afro') || slotData.id.includes('short04')) matColor = 0x5C246E;
+                else if (slotData.id.includes('bob')) matColor = 0x1A1A1C;
+                else matColor = 0x2C1C14;
+              }
+              child.material = new THREE.MeshStandardMaterial({
+                color: matColor,
+                roughness: 0.70,
+                metalness: 0.05,
+                side: THREE.DoubleSide
+              });
+            }
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+      }
+
+      // 2. Eyes (Bilateral Anatomical Eyeball Spheres with Sclera & Iris)
+      if (slot === 'eyes') {
+        const eyeGroup = new THREE.Group();
+        const spacing = isFemale ? 0.0336 : 0.0348;
+        const totalY = (isFemale ? 1.558 : 1.662) + (slotData.offsetY || 0);
+        const totalZ = (isFemale ? 0.1245 : 0.1352) + (slotData.offsetZ || 0);
+        const radius = (isFemale ? 0.0120 : 0.0125) * totalScale;
+
+        function createEyeballPair(tex) {
+          const eyeGeo = new THREE.SphereGeometry(radius, 32, 24);
+          eyeGeo.rotateY(-Math.PI / 2);
+
+          let eyeMat;
+          if (tex) {
+            eyeMat = new THREE.MeshStandardMaterial({
+              map: tex,
+              roughness: 0.12,
+              metalness: 0.02,
+              side: THREE.FrontSide
+            });
+          } else {
+            let irisColor = '#4B2D17';
+            if (slotData.id.includes('amber')) irisColor = '#C28432';
+            else if (slotData.id.includes('blue')) irisColor = '#2465A4';
+            else if (slotData.id.includes('grey')) irisColor = '#5A6C7D';
+            else if (slotData.id.includes('hazel')) irisColor = '#7E6B39';
+
+            const cvs = document.createElement('canvas');
+            cvs.width = 256; cvs.height = 256;
+            const ctx = cvs.getContext('2d');
+            ctx.fillStyle = '#F4F7F9';
+            ctx.fillRect(0, 0, 256, 256);
+            const scleraGrad = ctx.createRadialGradient(128, 128, 60, 128, 128, 128);
+            scleraGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+            scleraGrad.addColorStop(0.85, 'rgba(235, 225, 220, 0.35)');
+            scleraGrad.addColorStop(1, 'rgba(210, 195, 190, 0.7)');
+            ctx.fillStyle = scleraGrad;
+            ctx.fillRect(0, 0, 256, 256);
+            ctx.fillStyle = '#1A1817';
+            ctx.beginPath(); ctx.arc(128, 128, 66, 0, Math.PI * 2); ctx.fill();
+            const irisGrad = ctx.createRadialGradient(128, 128, 15, 128, 128, 64);
+            irisGrad.addColorStop(0, '#1A1208');
+            irisGrad.addColorStop(0.35, irisColor);
+            irisGrad.addColorStop(0.9, irisColor);
+            irisGrad.addColorStop(1, '#1A1817');
+            ctx.fillStyle = irisGrad;
+            ctx.beginPath(); ctx.arc(128, 128, 64, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#050507';
+            ctx.beginPath(); ctx.arc(128, 128, 25, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.beginPath(); ctx.arc(110, 110, 9, 0, Math.PI * 2); ctx.fill();
+
+            const cTex = new THREE.CanvasTexture(cvs);
+            eyeMat = new THREE.MeshStandardMaterial({
+              map: cTex,
+              roughness: 0.12,
+              metalness: 0.02
+            });
+          }
+
+          const lEye = new THREE.Mesh(eyeGeo, eyeMat);
+          lEye.position.set(-spacing, totalY, totalZ);
+          eyeGroup.add(lEye);
+
+          const rEye = new THREE.Mesh(eyeGeo.clone(), eyeMat);
+          rEye.position.set(spacing, totalY, totalZ);
+          eyeGroup.add(rEye);
+
+          slotData.mesh = eyeGroup;
+          attachmentRoot.add(eyeGroup);
+          updateStatsUI();
+
+          if (slotData.texture && !tex) {
+            tryLoadTexture(slotData.texture, function(loadedTex) {
+              lEye.material.map = loadedTex;
+              lEye.material.needsUpdate = true;
+              rEye.material.map = loadedTex;
+              rEye.material.needsUpdate = true;
+            });
+          }
+        }
+
+        createEyeballPair(null);
+        return;
+      }
+
+      // 3. Volumetric Anatomical Hair (Solid, Interactive & Draggable)
+      if (slot === 'hair') {
+        const id = slotData.id;
+        const scalpCenterY = (isFemale ? 1.625 : 1.710) + (slotData.offsetY || 0);
+        const scalpCenterZ = (isFemale ? 0.040 : 0.050) + (slotData.offsetZ || 0);
+
+        const hairGroup = new THREE.Group();
+        hairGroup.name = 'hair_attachment_group';
+        hairGroup.position.set(0, scalpCenterY, scalpCenterZ);
+
+        // Rich solid hair coloration matching thumbnails
+        let hairColor = 0x281C14; // short_crop brunette
+        if (id === 'side_part') hairColor = 0xC8A24A; // Golden blonde
+        if (id === 'bob')       hairColor = 0x161618; // Jet black
+        if (id === 'curly')     hairColor = 0x6E2170; // Violet/purple
+
+        const hairMat = new THREE.MeshStandardMaterial({
+          color: hairColor,
+          roughness: 0.48,
+          metalness: 0.12,
+          side: THREE.DoubleSide
+        });
+
+        // Safely apply texture if loaded without alpha-testing it away
+        if (slotData.texture) {
+          tryLoadTexture(slotData.texture, function(tex) {
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            hairMat.map = tex;
+            hairMat.needsUpdate = true;
+          });
+        }
+
+        if (id === 'short_crop') {
+          // Main cranial dome
+          const capGeo = new THREE.SphereGeometry(0.094 * totalScale, 36, 26, 0, Math.PI * 2, 0, Math.PI * 0.65);
+          capGeo.scale(1.05, 1.15, 1.25);
+          const cap = new THREE.Mesh(capGeo, hairMat);
+          cap.castShadow = true;
+          hairGroup.add(cap);
+
+          // Front fringe
+          const fringeGeo = new THREE.SphereGeometry(0.056 * totalScale, 24, 18, 0, Math.PI, 0, Math.PI * 0.45);
+          fringeGeo.scale(1.45, 0.85, 1.15);
+          fringeGeo.rotateX(0.40);
+          const fringe = new THREE.Mesh(fringeGeo, hairMat);
+          fringe.position.set(0, 0.015, 0.075 * totalScale);
+          hairGroup.add(fringe);
+
+          // Sideburns
+          const sbGeo = new THREE.BoxGeometry(0.012 * totalScale, 0.045 * totalScale, 0.022 * totalScale);
+          const lSb = new THREE.Mesh(sbGeo, hairMat);
+          lSb.position.set(-0.088 * totalScale, -0.040, 0.035 * totalScale);
+          hairGroup.add(lSb);
+
+          const rSb = new THREE.Mesh(sbGeo, hairMat);
+          rSb.position.set(0.088 * totalScale, -0.040, 0.035 * totalScale);
+          hairGroup.add(rSb);
+        } else if (id === 'side_part') {
+          // Formal side-parted hairstyle with volume
+          const mainGeo = new THREE.SphereGeometry(0.096 * totalScale, 36, 26, 0, Math.PI * 2, 0, Math.PI * 0.66);
+          mainGeo.scale(1.06, 1.18, 1.25);
+          const main = new THREE.Mesh(mainGeo, hairMat);
+          main.castShadow = true;
+          hairGroup.add(main);
+
+          // Left-swept pompadour parted fringe
+          const sweepGeo = new THREE.SphereGeometry(0.068 * totalScale, 24, 18, 0, Math.PI, 0, Math.PI * 0.55);
+          sweepGeo.scale(1.35, 0.95, 1.20);
+          sweepGeo.rotateZ(0.25);
+          sweepGeo.rotateX(0.35);
+          const sweep = new THREE.Mesh(sweepGeo, hairMat);
+          sweep.position.set(-0.025 * totalScale, 0.025, 0.065 * totalScale);
+          hairGroup.add(sweep);
+
+          // Sideburns
+          const sbGeo = new THREE.BoxGeometry(0.012 * totalScale, 0.048 * totalScale, 0.024 * totalScale);
+          const lSb = new THREE.Mesh(sbGeo, hairMat);
+          lSb.position.set(-0.089 * totalScale, -0.042, 0.035 * totalScale);
+          hairGroup.add(lSb);
+          const rSb = new THREE.Mesh(sbGeo, hairMat);
+          rSb.position.set(0.089 * totalScale, -0.042, 0.035 * totalScale);
+          hairGroup.add(rSb);
+        } else if (id === 'curly') {
+          // Afro base
+          const afroBase = new THREE.SphereGeometry(0.105 * totalScale, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.72);
+          afroBase.scale(1.10, 1.18, 1.28);
+          const afroMesh = new THREE.Mesh(afroBase, hairMat);
+          afroMesh.castShadow = true;
+          hairGroup.add(afroMesh);
+
+          // Curly clusters
+          const curlGeo = new THREE.DodecahedronGeometry(0.032 * totalScale, 1);
+          const curlOffsets = [
+            [-0.055, 0.075, 0.05], [0.055, 0.075, 0.05], [0, 0.095, 0.03],
+            [-0.080, 0.030, 0.03], [0.080, 0.030, 0.03], [-0.035, 0.060, 0.085],
+            [0.035, 0.060, 0.085], [0, 0.040, 0.105], [-0.075, -0.015, 0.04],
+            [0.075, -0.015, 0.04]
+          ];
+          curlOffsets.forEach(function(co) {
+            const cMesh = new THREE.Mesh(curlGeo, hairMat);
+            cMesh.position.set(co[0] * totalScale, co[1] * totalScale, co[2] * totalScale);
+            hairGroup.add(cMesh);
+          });
+        } else if (id === 'bob') {
+          // Bob cap
+          const capGeo = new THREE.SphereGeometry(0.096 * totalScale, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.62);
+          capGeo.scale(1.06, 1.14, 1.24);
+          const capMesh = new THREE.Mesh(capGeo, hairMat);
+          capMesh.castShadow = true;
+          hairGroup.add(capMesh);
+
+          // Left curtain
+          const leftCurtain = new THREE.CylinderGeometry(0.098 * totalScale, 0.112 * totalScale, 0.15 * totalScale, 20, 1, true, Math.PI * 0.68, Math.PI * 0.58);
+          leftCurtain.scale(1.08, 1.0, 1.22);
+          const lSide = new THREE.Mesh(leftCurtain, hairMat);
+          lSide.position.set(0, -0.060, 0);
+          hairGroup.add(lSide);
+
+          // Right curtain
+          const rightCurtain = new THREE.CylinderGeometry(0.098 * totalScale, 0.112 * totalScale, 0.15 * totalScale, 20, 1, true, -Math.PI * 0.26, Math.PI * 0.58);
+          rightCurtain.scale(1.08, 1.0, 1.22);
+          const rSide = new THREE.Mesh(rightCurtain, hairMat);
+          rSide.position.set(0, -0.060, 0);
+          hairGroup.add(rSide);
+
+          // Front fringe
+          const bobFringe = new THREE.SphereGeometry(0.052 * totalScale, 24, 16, 0, Math.PI, 0, Math.PI * 0.40);
+          bobFringe.scale(1.40, 0.85, 1.15);
+          bobFringe.rotateX(0.35);
+          const bFringeMesh = new THREE.Mesh(bobFringe, hairMat);
+          bFringeMesh.position.set(0, 0.010, 0.076 * totalScale);
+          hairGroup.add(bFringeMesh);
+        }
+
+        slotData.mesh = hairGroup;
+        attachmentRoot.add(hairGroup);
+        showHairDragBadge(true);
+        updateStatsUI();
+        return;
+      }
+
+      // 4. Procedural Glasses & Moustache Fallbacks
+      const group = new THREE.Group();
+      const hairMat = new THREE.MeshStandardMaterial({
+        color: 0x241D17,
+        roughness: 0.78,
+        metalness: 0.05,
+        side: THREE.DoubleSide
+      });
+
+      if (slot === 'glasses') {
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.25, metalness: 0.8 });
+        const lensMat = new THREE.MeshPhysicalMaterial({ color: 0xE8F0FE, transparent: true, opacity: 0.35, transmission: 0.95 });
+        const isRound = slotData.id === 'round';
+        const spacing = anchor.spacing;
+
+        const lLens = new THREE.Mesh(
+          isRound ? new THREE.CylinderGeometry(0.021 * totalScale, 0.021 * totalScale, 0.003, 18) : new THREE.BoxGeometry(0.042 * totalScale, 0.028 * totalScale, 0.003),
+          lensMat
+        );
+        lLens.rotation.x = Math.PI / 2;
+        lLens.position.set(-spacing, totalY, totalZ);
+        group.add(lLens);
+
+        const lFrame = new THREE.Mesh(
+          isRound ? new THREE.TorusGeometry(0.021 * totalScale, 0.0022, 8, 18) : new THREE.BoxGeometry(0.044 * totalScale, 0.030 * totalScale, 0.004),
+          frameMat
+        );
+        lFrame.position.set(-spacing, totalY, totalZ);
+        group.add(lFrame);
+
+        const rLens = new THREE.Mesh(
+          isRound ? new THREE.CylinderGeometry(0.021 * totalScale, 0.021 * totalScale, 0.003, 18) : new THREE.BoxGeometry(0.042 * totalScale, 0.028 * totalScale, 0.003),
+          lensMat
+        );
+        rLens.rotation.x = Math.PI / 2;
+        rLens.position.set(spacing, totalY, totalZ);
+        group.add(rLens);
+
+        const rFrame = new THREE.Mesh(
+          isRound ? new THREE.TorusGeometry(0.021 * totalScale, 0.0022, 8, 18) : new THREE.BoxGeometry(0.044 * totalScale, 0.030 * totalScale, 0.004),
+          frameMat
+        );
+        rFrame.position.set(spacing, totalY, totalZ);
+        group.add(rFrame);
+
+        const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.0018, 0.0018, 0.024 * totalScale, 8), frameMat);
+        bridge.rotation.z = Math.PI / 2;
+        bridge.position.set(0, totalY + 0.004, totalZ + 0.006);
+        group.add(bridge);
+
+        const templeL = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.003, 0.13 * totalScale), frameMat);
+        templeL.position.set(-0.065 * totalScale, totalY, totalZ - 0.065 * totalScale);
+        group.add(templeL);
+
+        const templeR = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.003, 0.13 * totalScale), frameMat);
+        templeR.position.set(0.065 * totalScale, totalY, totalZ - 0.065 * totalScale);
+        group.add(templeR);
+      }
+
+      if (slot === 'moustache') {
+        const geo = new THREE.CylinderGeometry(0.007 * totalScale, 0.004 * totalScale, 0.054 * totalScale, 12);
+        const mesh = new THREE.Mesh(geo, hairMat);
+        mesh.rotation.z = Math.PI / 2;
+        mesh.rotation.x = 0.25;
+        mesh.position.set(0, totalY, totalZ);
+        group.add(mesh);
+      }
+
+      slotData.mesh = group;
+      attachmentRoot.add(group);
+      updateStatsUI();
+    }
+
+    function setSkinTone(tone) {
+      currentSkinTone = tone;
+      activeDiffuseTexture = null;
+      applySkinMaterial();
+    }
+
+    function setFocus(focusMode) {
+      currentFocus = focusMode;
+      updateFocusCamera();
+      updateStatsUI();
+    }
+
+    function updateFocusCamera() {
+      if (!currentMeshGroup) return;
+
+      const modelKey = currentModelName.includes('female') ? 'female.glb' : 'male.glb';
+      const anchor = ANCHORS[modelKey] || ANCHORS['male.glb'];
+
+      const isFace = (currentFocus === 'face');
+      const targetY = isFace ? anchor.cameraY : 1.0;
+      const dist = isFace ? anchor.distFace : 2.6;
+
+      camera.fov = 40;
+      camera.updateProjectionMatrix();
+      controls.target.set(0, targetY, 0);
+
+      if (currentPreset === 'front') {
+        camera.position.set(0, targetY, dist);
+      } else if (currentPreset === 'angle') {
+        const rad = Math.PI / 4;
+        camera.position.set(dist * Math.sin(rad), targetY + (isFace ? 0.02 : 0.1), dist * Math.cos(rad));
+      } else if (currentPreset === 'profile') {
+        camera.position.set(dist, targetY, 0);
+      }
+      controls.update();
+    }
+
+    function setCameraPreset(preset) {
+      currentPreset = preset;
+      updateFocusCamera();
+    }
+
+    function captureSnapshot() {
+      renderer.render(scene, camera);
+      return renderer.domElement.toDataURL('image/png');
+    }
+
+    function generateForensic2DSketch(style, caseId) {
+      const prevPos = camera.position.clone();
+      const prevTarget = controls.target.clone();
+      const prevAspect = camera.aspect;
+      const prevBg = scene.background ? scene.background.clone() : null;
+      const prevGrid = gridHelper ? gridHelper.visible : true;
+
+      // 1. Force perfect 1:1 square camera aspect ratio (eliminates all horizontal squishing/stretching!)
+      camera.aspect = 1.0;
+      camera.updateProjectionMatrix();
+
+      // 2. Natural portrait framing (head and shoulders, natural perspective)
+      const isFemale = currentModelName.includes('female');
+      const targetY = isFemale ? 1.62 : 1.66;
+      const dist = 0.88;
+      camera.position.set(0, targetY, dist);
+      controls.target.set(0, targetY, 0);
+      camera.lookAt(0, targetY, 0);
+      controls.update();
+
+      // 3. Isolated background during snapshot for pristine paper contrast
+      if (gridHelper) gridHelper.visible = false;
+      if (style === 'noir' || style === 'blueprint') {
+        scene.background = new THREE.Color(0x090D14);
+      } else {
+        scene.background = new THREE.Color(0xFFFFFF); // Clean white sketch paper
+      }
+
+      const width = 800;
+      const height = 800;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      // 4. Render 3D model in clean square resolution directly
+      renderer.setSize(width, height);
+      renderer.render(scene, camera);
+
+      // Draw real 3D model snapshot onto canvas
+      ctx.drawImage(renderer.domElement, 0, 0, width, height);
+
+      // 5. Restore live studio background, grid, renderer size, and camera projection immediately
+      scene.background = prevBg;
+      if (gridHelper) gridHelper.visible = prevGrid;
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = prevAspect;
+      camera.position.copy(prevPos);
+      controls.target.copy(prevTarget);
+      camera.updateProjectionMatrix();
+      controls.update();
+
+      // 6. Convert REAL 3D model pixels directly into Forensic Sketch (NO fake overlay lines!)
+      if (style !== 'photo') {
+        const imgData = ctx.getImageData(0, 0, width, height);
+        const data = imgData.data;
+
+        // Grayscale Luminance of the real 3D model
+        const gray = new Float32Array(width * height);
+        for (let i = 0; i < data.length; i += 4) {
+          gray[i / 4] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        }
+
+        // Sobel edge filter on real geometry, real mustache, hair, sunglasses, and features
+        const edges = new Float32Array(width * height);
+        for (let y = 1; y < height - 1; y++) {
+          const yw = y * width;
+          for (let x = 1; x < width - 1; x++) {
+            const idx = yw + x;
+            const gx =
+              -gray[idx - width - 1] + gray[idx - width + 1]
+              - 2 * gray[idx - 1] + 2 * gray[idx + 1]
+              - gray[idx + width - 1] + gray[idx + width + 1];
+            const gy =
+              -gray[idx - width - 1] - 2 * gray[idx - width] - gray[idx - width + 1]
+              + gray[idx + width - 1] + 2 * gray[idx + width] + gray[idx + width + 1];
+            edges[idx] = Math.sqrt(gx * gx + gy * gy);
+          }
+        }
+
+        // Apply authentic pencil tone mapping to real 3D model
+        for (let y = 0; y < height; y++) {
+          const yw = y * width;
+          for (let x = 0; x < width; x++) {
+            const pxIdx = yw + x;
+            const dataIdx = pxIdx * 4;
+            const g = gray[pxIdx];
+            const e = edges[pxIdx];
+
+            if (style === 'blueprint') {
+              const val = Math.min(255, e * 1.8 + (255 - g) * 0.4);
+              data[dataIdx] = Math.min(255, val * 0.1);
+              data[dataIdx + 1] = Math.min(255, val * 0.85);
+              data[dataIdx + 2] = Math.min(255, val * 0.95);
+            } else if (style === 'noir') {
+              const val = Math.min(255, e * 1.8 + (255 - g) * 0.5);
+              data[dataIdx] = val;
+              data[dataIdx + 1] = val;
+              data[dataIdx + 2] = val;
+            } else {
+              // Authentic Forensic Artist Pencil & Graphite Shading
+              const grain = Math.sin((x * 12.9898 + y * 78.233)) * 43758.5453;
+              const noise = ((grain - Math.floor(grain)) - 0.5) * 10;
+              let tone = 255 - (e * 2.0 + (255 - g) * 0.70) + noise * ((255 - g) / 255);
+              tone = Math.max(0, Math.min(255, tone));
+
+              // Clean paper highlights
+              if (g > 246 && e < 10) tone = 255;
+
+              data[dataIdx] = tone;
+              data[dataIdx + 1] = tone;
+              data[dataIdx + 2] = tone;
+            }
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+
+      // Clean subtle outer border and evidence tag
+      ctx.lineWidth = 3.0;
+      ctx.strokeStyle = style === 'blueprint' ? '#2dd4bf' : (style === 'noir' ? '#ffffff' : '#1c1c1c');
+      ctx.strokeRect(6, 6, width - 12, height - 12);
+
+      ctx.fillStyle = style === 'blueprint' ? '#2dd4bf' : (style === 'noir' ? '#ffffff' : '#1c1c1c');
+      ctx.font = 'bold 11px "Times New Roman", serif';
+      ctx.fillText('NEURA-CRIME FORENSIC LAB // ' + (caseId || 'CASE-2026-X891'), 16, height - 14);
+
+      return canvas.toDataURL('image/png');
+    }
+
+    function updateStatsUI() {
+      const tag = document.getElementById('model-tag');
+      const stats = document.getElementById('model-stats');
+      const focusStat = document.getElementById('focus-stat');
+      const list = document.getElementById('features-list');
+
+      if (tag) tag.innerText = '3D COMPOSITE: ' + currentModelName.toUpperCase();
+      if (stats) stats.innerText = `Model: ${currentModelName} | Anchors: ${currentModelName.includes('female') ? 'Female Calibrated' : 'Male Calibrated'}`;
+      if (focusStat) focusStat.innerText = `Camera: ${currentFocus === 'face' ? 'Face Close-up' : 'Full Body'} (${currentPreset.toUpperCase()})`;
+
+      if (list) {
+        const active = [];
+        for (let s in activeSlots) {
+          if (activeSlots[s].id !== 'none') {
+            active.push(`${s}: ${activeSlots[s].id}`);
+          }
+        }
+        list.innerText = active.length > 0 ? active.join(' • ') : 'Active Slots: None (Baseline)';
+      }
+    }
+
+    function notifyParent(data) {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(data, '*');
+      }
+    }
+
+    // 3D MOUSE DRAGGING FOR HAIR
+    let isHairDragging = false;
+    const raycaster = new THREE.Raycaster();
+    const mouseVec = new THREE.Vector2();
+    const dragPlane = new THREE.Plane();
+    const planeIntersect = new THREE.Vector3();
+    const dragOffset = new THREE.Vector3();
+
+    function initHairMouseDragging() {
+      const dom = renderer.domElement;
+
+      dom.addEventListener('pointerdown', function (e) {
+        if (!activeSlots.hair || !activeSlots.hair.mesh || activeSlots.hair.id === 'none') return;
+
+        const rect = dom.getBoundingClientRect();
+        mouseVec.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouseVec.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouseVec, camera);
+        const hits = raycaster.intersectObjects(activeSlots.hair.mesh.children, true);
+
+        if (hits.length > 0) {
+          isHairDragging = true;
+          controls.enabled = false;
+
+          const camDir = camera.getWorldDirection(new THREE.Vector3()).negate();
+          dragPlane.setFromNormalAndCoplanarPoint(camDir, activeSlots.hair.mesh.position);
+
+          if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
+            dragOffset.copy(activeSlots.hair.mesh.position).sub(planeIntersect);
+          }
+          dom.style.cursor = 'grabbing';
+          showHairDragBadge(true);
+        }
+      });
+
+      window.addEventListener('pointermove', function (e) {
+        if (!isHairDragging || !activeSlots.hair || !activeSlots.hair.mesh) return;
+
+        const rect = dom.getBoundingClientRect();
+        mouseVec.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouseVec.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouseVec, camera);
+
+        if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
+          const newPos = planeIntersect.add(dragOffset);
+          activeSlots.hair.mesh.position.copy(newPos);
+
+          const isFemale = currentModelName.includes('female');
+          const baseScalpY = (activeSlots.hair.baseY !== undefined) ? activeSlots.hair.baseY : (isFemale ? 0.770 : 0.8234);
+          const baseScalpZ = (activeSlots.hair.baseZ !== undefined) ? activeSlots.hair.baseZ : (isFemale ? -0.0160 : -0.0173);
+
+          const currentYOffset = activeSlots.hair.mesh.position.y - baseScalpY;
+          const currentZOffset = activeSlots.hair.mesh.position.z - baseScalpZ;
+
+          activeSlots.hair.offsetY = currentYOffset;
+          activeSlots.hair.offsetZ = currentZOffset;
+
+          updateHairDragBadge(currentYOffset, currentZOffset);
+
+          notifyParent({
+            type: 'OFFSET_CHANGED',
+            slot: 'hair',
+            offsetY: currentYOffset,
+            offsetZ: currentZOffset
+          });
+        }
+      });
+
+      window.addEventListener('pointerup', function () {
+        if (isHairDragging) {
+          isHairDragging = false;
+          controls.enabled = true;
+          dom.style.cursor = 'default';
+        }
+      });
+    }
+
+    function showHairDragBadge(show) {
+      const el = document.getElementById('hair-drag-badge');
+      if (!el) return;
+      el.style.display = show ? 'flex' : 'none';
+      if (show && activeSlots.hair) {
+        updateHairDragBadge(activeSlots.hair.offsetY || 0, activeSlots.hair.offsetZ || 0);
+      }
+    }
+
+    function hideHairDragBadge() {
+      const el = document.getElementById('hair-drag-badge');
+      if (el) el.style.display = 'none';
+    }
+
+    function updateHairDragBadge(yOffset, zOffset) {
+      const coords = document.getElementById('hair-coords');
+      if (coords) {
+        coords.innerText = `Y: ${(yOffset * 100).toFixed(1)} cm | Z: ${(zOffset * 100).toFixed(1)} cm`;
+      }
+    }
+
+    function snapHairToHead() {
+      if (!activeSlots.hair || !activeSlots.hair.mesh) return;
+
+      activeSlots.hair.offsetY = 0;
+      activeSlots.hair.offsetZ = 0;
+      buildSlotMesh('hair');
+
+      updateHairDragBadge(0, 0);
+
+      notifyParent({
+        type: 'OFFSET_CHANGED',
+        slot: 'hair',
+        offsetY: 0,
+        offsetZ: 0
+      });
+    }
+
+    window.neuralViewer = {
+      loadModel: loadModel,
+      applyAsset: applyAsset,
+      removeAsset: removeAsset,
+      resetAssetOffset: resetAssetOffset,
+      setSkinTone: setSkinTone,
+      setFocus: setFocus,
+      setCameraPreset: setCameraPreset,
+      setStudioBackground: setStudioBackground,
+      captureSnapshot: captureSnapshot,
+      snapHairToHead: snapHairToHead,
+      showHairDragBadge: showHairDragBadge,
+      hideHairDragBadge: hideHairDragBadge
+    };
+
+    window.addEventListener('message', function (e) {
+      const data = e.data;
+      if (!data) return;
+
+      if (data.type === 'APPLY_ASSET') {
+        applyAsset(data.slot, data.assetId, data.offsets, {
+          obj: data.obj,
+          texture: data.texture,
+          target: data.target
+        });
+      } else if (data.type === 'REMOVE_ASSET') {
+        removeAsset(data.slot);
+      } else if (data.type === 'RESET_OFFSET') {
+        resetAssetOffset(data.slot);
+      } else if (data.type === 'LOAD_MODEL') {
+        const file = data.model.split('/').pop();
+        loadModel('models/' + file);
+      } else if (data.type === 'SET_FOCUS') {
+        setFocus(data.focus);
+      } else if (data.type === 'SET_CAMERA') {
+        setCameraPreset(data.preset);
+      } else if (data.type === 'SET_SKIN') {
+        setSkinTone(data.skin);
+      } else if (data.type === 'SET_STUDIO_BG') {
+        setStudioBackground(data.theme || 'light');
+      } else if (data.type === 'CAPTURE_SNAPSHOT') {
+        const img = captureSnapshot();
+        notifyParent({ type: 'SNAPSHOT_CAPTURED', dataUrl: img });
+      } else if (data.type === 'GENERATE_FORENSIC_SKETCH') {
+        const style = data.style || 'pencil';
+        const caseId = data.caseId || 'CASE-2026-X891';
+        const sketchDataUrl = generateForensic2DSketch(style, caseId);
+        notifyParent({
+          type: 'FORENSIC_SKETCH_READY',
+          sketchDataUrl: sketchDataUrl,
+          style: style,
+          caseId: caseId
+        });
+      }
+    });
+
+    window.onload = init;
+  </script>
+</body>
+</html>

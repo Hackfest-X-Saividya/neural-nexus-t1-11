@@ -1,0 +1,47 @@
+# Material definition for short01_diffuse_brown
+
+name short01_diffuse_brown
+description short01 material
+ambientColor 0.11 0.11 0.11
+diffuseColor 1.0 1.0 1.0
+specularColor 0.0470588235294 0.0470588235294 0.0470588235294
+shininess 0.96
+emissiveColor 0.0 0.0 0.0
+opacity 1.0
+translucency 0.0
+
+shadeless False
+wireframe False
+transparent True
+alphaToCoverage True
+backfaceCull False
+depthless False
+
+castShadows True
+
+receiveShadows True
+
+diffuseTexture short01_diffuse_brown.png
+
+# Sub-surface scattering parameters
+sssEnabled True
+sssRScale 5.0
+sssGScale 2.5
+sssBScale 1.0
+
+shader data/shaders/glsl/litsphere
+
+shaderParam AdditiveShading 0.1
+shaderParam litsphereTexture data/litspheres/lit_hair.png
+
+shaderDefine ALPHA_MAP
+shaderDefine CALC_NORMAL_Z
+
+shaderConfig ambientOcclusion True
+shaderConfig normal False
+shaderConfig bump True
+shaderConfig displacement False
+shaderConfig vertexColors True
+shaderConfig spec True
+shaderConfig transparency True
+shaderConfig diffuse True

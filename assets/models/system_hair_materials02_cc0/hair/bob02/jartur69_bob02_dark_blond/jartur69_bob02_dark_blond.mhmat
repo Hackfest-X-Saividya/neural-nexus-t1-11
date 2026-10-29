@@ -1,0 +1,44 @@
+# Material definition for Jartur_bob02_diffuse_dark_blond
+
+name Jartur_bob02_diffuse_dark_blond
+description bob02 material
+ambientColor 0.5 0.2 0.2
+diffuseColor 1.0 1.0 1.0
+specularColor 0.0 0.0 0.0
+shininess 0.0
+emissiveColor 0.0 0.0 0.0
+opacity 1.0
+translucency 0.0
+
+shadeless False
+wireframe False
+transparent True
+alphaToCoverage True
+backfaceCull False
+depthless False
+
+castShadows True
+
+receiveShadows True
+
+diffuseTexture Jartur_bob02_diffuse_dark_blond.png
+
+# Sub-surface scattering parameters
+sssEnabled True
+sssRScale 5.0
+sssGScale 2.5
+sssBScale 1.0
+
+shader data/shaders/glsl/phong
+
+shaderParam AdditiveShading 0.0
+shaderParam litsphereTexture litspheres/lit_refl_sharp_aniso_hard_blonde.png
+
+shaderConfig ambientOcclusion True
+shaderConfig normal False
+shaderConfig bump True
+shaderConfig displacement False
+shaderConfig vertexColors True
+shaderConfig spec True
+shaderConfig transparency True
+shaderConfig diffuse True
