@@ -1321,6 +1321,11 @@
       if (gridHelper) gridHelper.visible = false;
       if (style === 'noir' || style === 'blueprint') {
         scene.background = new THREE.Color(0x090D14);
+      } else if (style === 'photo') {
+        scene.background = new THREE.Color(0xF0F4F8); // Clean professional studio backdrop
+        if (ambientLight) ambientLight.intensity = 0.90;
+        if (keyLight) keyLight.intensity = 1.35;
+        if (fillLight) fillLight.intensity = 0.75;
       } else {
         scene.background = new THREE.Color(0xFFFFFF); // Clean white sketch paper
         // Enhance directional lighting for realistic facial bone structure shadows
@@ -1484,12 +1489,15 @@
 
       // Clean subtle outer border and evidence tag
       ctx.lineWidth = 3.0;
-      ctx.strokeStyle = style === 'blueprint' ? '#2dd4bf' : (style === 'noir' ? '#ffffff' : '#1c1c1c');
+      ctx.strokeStyle = style === 'blueprint' ? '#2dd4bf' : (style === 'noir' ? '#ffffff' : (style === 'photo' ? '#0ea5e9' : '#1c1c1c'));
       ctx.strokeRect(6, 6, width - 12, height - 12);
 
-      ctx.fillStyle = style === 'blueprint' ? '#2dd4bf' : (style === 'noir' ? '#ffffff' : '#1c1c1c');
+      ctx.fillStyle = style === 'blueprint' ? '#2dd4bf' : (style === 'noir' ? '#ffffff' : (style === 'photo' ? '#0f172a' : '#1c1c1c'));
       ctx.font = 'bold 11px "Times New Roman", serif';
-      ctx.fillText('NEURA-CRIME FORENSIC LAB // ' + (caseId || 'CASE-2026-X891'), 16, height - 14);
+      const evidenceLabel = style === 'photo'
+        ? 'NEURA-CRIME FORENSIC LAB // 3D COLOURED IDENTIFICATION PORTRAIT // ' + (caseId || 'CASE-2026-X891')
+        : 'NEURA-CRIME FORENSIC LAB // 2D FORENSIC SKETCH // ' + (caseId || 'CASE-2026-X891');
+      ctx.fillText(evidenceLabel, 16, height - 14);
 
       return canvas.toDataURL('image/png');
     }

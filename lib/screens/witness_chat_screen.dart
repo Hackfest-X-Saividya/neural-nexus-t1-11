@@ -25,8 +25,12 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
-  // Active 2D Forensic Sketch Data
+  // Active 2D Forensic Sketch & Coloured Image Data
   String? _latestSketchDataUrl;
+  String? _sketchDataUrl;
+  String? _coloredDataUrl;
+  final ValueNotifier<String?> _sketchDataUrlNotifier = ValueNotifier<String?>(null);
+  final ValueNotifier<String?> _coloredDataUrlNotifier = ValueNotifier<String?>(null);
   StreamSubscription? _sketchMsgSubscription;
 
   // Active 3D composite parameters
@@ -87,9 +91,17 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
     _sketchMsgSubscription = PlatformBridge.listenWebMessages((data) {
       if (data['type'] == 'FORENSIC_SKETCH_READY') {
         final url = data['sketchDataUrl'] as String?;
+        final style = data['style'] as String? ?? 'pencil';
         if (url != null && mounted) {
           setState(() {
             _latestSketchDataUrl = url;
+            if (style == 'photo') {
+              _coloredDataUrl = url;
+              _coloredDataUrlNotifier.value = url;
+            } else {
+              _sketchDataUrl = url;
+              _sketchDataUrlNotifier.value = url;
+            }
           });
         }
       }
@@ -116,6 +128,8 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
   @override
   void dispose() {
     _sketchMsgSubscription?.cancel();
+    _sketchDataUrlNotifier.dispose();
+    _coloredDataUrlNotifier.dispose();
     _textController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -354,39 +368,122 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
     });
   }
 
-  void _downloadSketchImage() {
-    if (_latestSketchDataUrl != null) {
+  void _downloadActiveImage(String activeFormat) {
+    if (activeFormat == 'colored') {
+      final url = _coloredDataUrlNotifier.value ?? _coloredDataUrl;
+      if (url != null) {
+        PlatformBridge.downloadFile(
+          url,
+          '${widget.caseId}_Forensic_Coloured_Portrait.png',
+        );
+        _showDownloadSnackBar('${widget.caseId}_Forensic_Coloured_Portrait.png');
+      } else {
+        _showNotReadySnackBar('Coloured Portrait is rendering, please wait...');
+      }
+    } else {
+      final url = _sketchDataUrlNotifier.value ?? _sketchDataUrl ?? _latestSketchDataUrl;
+      if (url != null) {
+        PlatformBridge.downloadFile(
+          url,
+          '${widget.caseId}_Forensic_2D_Sketch.png',
+        );
+        _showDownloadSnackBar('${widget.caseId}_Forensic_2D_Sketch.png');
+      } else {
+        _showNotReadySnackBar('2D Sketch is generating, please wait...');
+      }
+    }
+  }
+
+  void _downloadBothImages() async {
+    final sketchUrl = _sketchDataUrlNotifier.value ?? _sketchDataUrl ?? _latestSketchDataUrl;
+    final colorUrl = _coloredDataUrlNotifier.value ?? _coloredDataUrl;
+
+    int count = 0;
+    if (sketchUrl != null) {
       PlatformBridge.downloadFile(
-        _latestSketchDataUrl!,
+        sketchUrl,
         '${widget.caseId}_Forensic_2D_Sketch.png',
       );
+      count++;
+    }
+    if (colorUrl != null) {
+      await Future.delayed(const Duration(milliseconds: 350));
+      PlatformBridge.downloadFile(
+        colorUrl,
+        '${widget.caseId}_Forensic_Coloured_Portrait.png',
+      );
+      count++;
+    }
 
+    if (count > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
               const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
               const SizedBox(width: 8),
-              Text(
-                '✓ ${widget.caseId}_Forensic_2D_Sketch.png downloaded successfully!',
-                style: const TextStyle(fontFamily: forensicFont, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  '✓ Downloaded 2 Forensic files (${widget.caseId}_Forensic_2D_Sketch.png & Coloured Portrait)',
+                  style: const TextStyle(fontFamily: forensicFont, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
           backgroundColor: AppTheme.primaryCyan,
         ),
       );
+    } else {
+      _showNotReadySnackBar('Images are generating, please wait a moment...');
     }
+  }
+
+  void _showDownloadSnackBar(String filename) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '✓ $filename downloaded successfully!',
+                style: const TextStyle(fontFamily: forensicFont, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppTheme.primaryCyan,
+      ),
+    );
+  }
+
+  void _showNotReadySnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(fontFamily: forensicFont),
+        ),
+        backgroundColor: Colors.orange.shade800,
+      ),
+    );
   }
 
   void _onGenerateSketch() {
     _triggerGenerateSketch(style: 'pencil');
-    String selectedStyle = 'pencil';
+    _triggerGenerateSketch(style: 'photo');
+
+    String activeFormat = 'sketch'; // 'sketch' or 'colored'
+    String selectedSketchStyle = 'pencil'; // 'pencil', 'blueprint', 'noir'
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
+          final isSketch = activeFormat == 'sketch';
+          final activeNotifier = isSketch ? _sketchDataUrlNotifier : _coloredDataUrlNotifier;
+
           return AlertDialog(
             backgroundColor: const Color(0xFF101520),
             shape: RoundedRectangleBorder(
@@ -399,11 +496,15 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
-                  children: const [
-                    Icon(Icons.draw_rounded, color: AppTheme.primaryCyanLight, size: 22),
-                    SizedBox(width: 10),
-                    Text(
-                      '2D Forensic Composite Sketch',
+                  children: [
+                    Icon(
+                      isSketch ? Icons.draw_rounded : Icons.camera_front_rounded,
+                      color: AppTheme.primaryCyanLight,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Forensic Identification Composite',
                       style: TextStyle(
                         fontFamily: forensicFont,
                         fontWeight: FontWeight.bold,
@@ -420,73 +521,199 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
               ],
             ),
             content: SizedBox(
-              width: 440,
+              width: 460,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Style Selector Chips
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
+                    // Segmented Dual-Format Switcher: 2D Sketch vs Coloured Pic
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0C1019),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.border),
+                      ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildSketchStyleChip(
-                            label: '✏️ Pencil Sketch',
-                            styleKey: 'pencil',
-                            selectedStyle: selectedStyle,
-                            onTap: () {
-                              setModalState(() => selectedStyle = 'pencil');
-                              _triggerGenerateSketch(style: 'pencil');
-                            },
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                setModalState(() {
+                                  activeFormat = 'sketch';
+                                });
+                                if (_sketchDataUrlNotifier.value == null) {
+                                  _triggerGenerateSketch(style: selectedSketchStyle);
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(7),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSketch
+                                      ? AppTheme.primaryCyan.withOpacity(0.28)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(7),
+                                  border: isSketch
+                                      ? Border.all(color: AppTheme.primaryCyanLight, width: 1.5)
+                                      : null,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.edit_note_rounded,
+                                      size: 16,
+                                      color: isSketch ? AppTheme.primaryCyanLight : AppTheme.textSecondary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '✏️ 2D Sketch',
+                                      style: TextStyle(
+                                        fontFamily: forensicFont,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: isSketch ? Colors.white : AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          _buildSketchStyleChip(
-                            label: '📐 Blueprint',
-                            styleKey: 'blueprint',
-                            selectedStyle: selectedStyle,
-                            onTap: () {
-                              setModalState(() => selectedStyle = 'blueprint');
-                              _triggerGenerateSketch(style: 'blueprint');
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _buildSketchStyleChip(
-                            label: '🖤 Noir Contrast',
-                            styleKey: 'noir',
-                            selectedStyle: selectedStyle,
-                            onTap: () {
-                              setModalState(() => selectedStyle = 'noir');
-                              _triggerGenerateSketch(style: 'noir');
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _buildSketchStyleChip(
-                            label: '📷 Real 3D Pic',
-                            styleKey: 'photo',
-                            selectedStyle: selectedStyle,
-                            onTap: () {
-                              setModalState(() => selectedStyle = 'photo');
-                              _triggerGenerateSketch(style: 'photo');
-                            },
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                setModalState(() {
+                                  activeFormat = 'colored';
+                                });
+                                if (_coloredDataUrlNotifier.value == null) {
+                                  _triggerGenerateSketch(style: 'photo');
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(7),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: !isSketch
+                                      ? const Color(0xFF0284C7).withOpacity(0.35)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(7),
+                                  border: !isSketch
+                                      ? Border.all(color: const Color(0xFF38BDF8), width: 1.5)
+                                      : null,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.palette_rounded,
+                                      size: 16,
+                                      color: !isSketch ? const Color(0xFF38BDF8) : AppTheme.textSecondary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '🎨 Coloured Pic',
+                                      style: TextStyle(
+                                        fontFamily: forensicFont,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: !isSketch ? Colors.white : AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 12),
+
+                    // Sub-controls / Style selector
+                    if (isSketch)
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildSketchStyleChip(
+                              label: '✏️ Pencil Sketch',
+                              styleKey: 'pencil',
+                              selectedStyle: selectedSketchStyle,
+                              onTap: () {
+                                setModalState(() => selectedSketchStyle = 'pencil');
+                                _triggerGenerateSketch(style: 'pencil');
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _buildSketchStyleChip(
+                              label: '📐 Blueprint',
+                              styleKey: 'blueprint',
+                              selectedStyle: selectedSketchStyle,
+                              onTap: () {
+                                setModalState(() => selectedSketchStyle = 'blueprint');
+                                _triggerGenerateSketch(style: 'blueprint');
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _buildSketchStyleChip(
+                              label: '🖤 Noir Contrast',
+                              styleKey: 'noir',
+                              selectedStyle: selectedSketchStyle,
+                              onTap: () {
+                                setModalState(() => selectedSketchStyle = 'noir');
+                                _triggerGenerateSketch(style: 'noir');
+                              },
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0284C7).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.35)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.camera_alt_outlined, size: 14, color: Color(0xFF38BDF8)),
+                            SizedBox(width: 6),
+                            Text(
+                              '3D Studio Coloured Composite • Natural Lighting & Full Color',
+                              style: TextStyle(
+                                fontFamily: forensicFont,
+                                fontSize: 11.5,
+                                color: Color(0xFFBAE6FD),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     const SizedBox(height: 14),
 
-                    // Square 2D Forensic Sketch Preview (Matches user reference format!)
+                    // Square High-Resolution Preview Frame (360x360)
                     Container(
                       width: 360,
                       height: 360,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isSketch ? Colors.white : const Color(0xFF141A26),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.black87, width: 2),
+                        border: Border.all(
+                          color: isSketch ? Colors.black87 : const Color(0xFF38BDF8).withOpacity(0.6),
+                          width: 2,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.primaryCyan.withOpacity(0.25),
+                            color: (isSketch ? AppTheme.primaryCyan : const Color(0xFF0284C7)).withOpacity(0.25),
                             blurRadius: 16,
                             spreadRadius: 2,
                           ),
@@ -494,37 +721,79 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: _latestSketchDataUrl != null
-                            ? Image.network(
-                                _latestSketchDataUrl!,
-                                width: 360,
-                                height: 360,
-                                fit: BoxFit.cover,
-                              )
-                            : Container(
-                                color: const Color(0xFF141A26),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      CircularProgressIndicator(
-                                        color: AppTheme.primaryCyan,
-                                        strokeWidth: 2.5,
-                                      ),
-                                      SizedBox(height: 14),
-                                      Text(
-                                        'Extracting 2D Forensic Linework\nfrom 3D Model...',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontFamily: forensicFont,
-                                          fontSize: 13,
-                                          color: AppTheme.primaryCyanLight,
+                        child: ValueListenableBuilder<String?>(
+                          valueListenable: activeNotifier,
+                          builder: (context, activeUrl, _) {
+                            final displayUrl = isSketch
+                                ? (activeUrl ?? _sketchDataUrl ?? _latestSketchDataUrl)
+                                : (activeUrl ?? _coloredDataUrl);
+
+                            if (displayUrl != null) {
+                              return Stack(
+                                children: [
+                                  Image.network(
+                                    displayUrl,
+                                    key: ValueKey(displayUrl),
+                                    width: 360,
+                                    height: 360,
+                                    fit: BoxFit.cover,
+                                  ),
+                                  Positioned(
+                                    top: 10,
+                                    right: 10,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.75),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: isSketch ? AppTheme.primaryCyanLight : const Color(0xFF38BDF8),
+                                          width: 1,
                                         ),
                                       ),
-                                    ],
+                                      child: Text(
+                                        isSketch ? '2D SKETCH' : 'COLOURED PIC',
+                                        style: TextStyle(
+                                          fontFamily: forensicFont,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: isSketch ? AppTheme.primaryCyanLight : const Color(0xFF38BDF8),
+                                        ),
+                                      ),
+                                    ),
                                   ),
+                                ],
+                              );
+                            }
+
+                            return Container(
+                              color: const Color(0xFF141A26),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      color: isSketch ? AppTheme.primaryCyan : const Color(0xFF38BDF8),
+                                      strokeWidth: 2.5,
+                                    ),
+                                    const SizedBox(height: 14),
+                                    Text(
+                                      isSketch
+                                          ? 'Extracting 2D Forensic Linework\nfrom 3D Model...'
+                                          : 'Rendering Studio 3D Coloured Portrait\nfrom 3D Composite...',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontFamily: forensicFont,
+                                        fontSize: 13,
+                                        color: isSketch ? AppTheme.primaryCyanLight : const Color(0xFF38BDF8),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -585,16 +854,33 @@ class _WitnessChatScreenState extends State<WitnessChatScreen>
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('Close', style: TextStyle(color: AppTheme.textSecondary)),
               ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  _downloadBothImages();
+                },
+                icon: const Icon(Icons.file_download_outlined, size: 16),
+                label: const Text('Download Both (.PNG)'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF38BDF8),
+                  side: const BorderSide(color: Color(0xFF0284C7)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
               ElevatedButton.icon(
                 onPressed: () {
-                  _downloadSketchImage();
+                  _downloadActiveImage(activeFormat);
                 },
                 icon: const Icon(Icons.download_rounded, size: 18),
-                label: const Text('Download 2D Sketch (.PNG)'),
+                label: Text(
+                  isSketch ? 'Download 2D Sketch (.PNG)' : 'Download Coloured Pic (.PNG)',
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryCyan,
+                  backgroundColor: isSketch ? AppTheme.primaryCyan : const Color(0xFF0284C7),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                   elevation: 4,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),

@@ -605,8 +605,8 @@ class _Composite3DViewportState extends State<Composite3DViewport> {
                   flex: 2,
                   child: OutlinedButton.icon(
                     onPressed: widget.onGenerateSketchPressed,
-                    icon: const Icon(Icons.draw_rounded, size: 16),
-                    label: const Text('2D Sketch'),
+                    icon: const Icon(Icons.art_track_rounded, size: 16),
+                    label: const Text('2D Sketch / Photo'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
